@@ -3,7 +3,7 @@ Core Application Configuration
 ==============================
 Purpose:
     Manages global configuration parameters, environment variables,
-    CORS policies, and third-party service credentials using Pydantic Settings.
+    CORS policies, and external service credentials using Pydantic Settings.
 
 Milestone Notes:
     - Milestone 1: Baseline configuration and environment variable loading.
@@ -22,33 +22,14 @@ class Settings(BaseSettings):
     Default values allow the application to start in development mode seamlessly.
     """
 
-    # Application Metadata
-    APP_NAME: str = "AI Startup Idea Validator with Market Analysis Assistance"
+    # Application Metadata & Server Configuration
+    APP_NAME: str = "AI-Startup-Idea-Validator"
     ENVIRONMENT: str = "development"
-    DEBUG: bool = True
-    API_V1_PREFIX: str = "/api/v1"
-    HOST: str = "0.0.0.0"
     PORT: int = 8000
+    HOST: str = "0.0.0.0"
+    API_PREFIX: str = "/api/v1"
 
-    # Cross-Origin Resource Sharing (CORS)
-    # Allows requests from Vite React frontend during development and Vercel in production
-    ALLOWED_ORIGINS: Union[str, List[str]] = [
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:3000",
-    ]
-
-    # Database Configuration (Future Milestones: PostgreSQL & SQLAlchemy)
-    DATABASE_URL: str = Field(
-        default="postgresql://postgres:postgres@localhost:5432/startup_validator_db",
-        description="PostgreSQL Database Connection URL",
-    )
-
-    # External AI & Search APIs (Future Milestones)
-    TAVILY_API_KEY: str = Field(
-        default="",
-        description="API key for Tavily real-time web search service",
-    )
+    # External AI & Search APIs (Milestone 2 & 3 Placeholders)
     OPENAI_API_KEY: str = Field(
         default="",
         description="API key for OpenAI models (GPT-4o/mini)",
@@ -56,6 +37,16 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str = Field(
         default="",
         description="API key for Google Gemini models",
+    )
+    TAVILY_API_KEY: str = Field(
+        default="",
+        description="API key for Tavily real-time web search service",
+    )
+
+    # Frontend URL & CORS Configuration
+    FRONTEND_URL: str = Field(
+        default="http://localhost:5173",
+        description="Origin URL of the frontend application",
     )
 
     # Structured Logging
@@ -68,12 +59,29 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
+    @property
+    def API_V1_PREFIX(self) -> str:
+        """Alias for backward compatibility with router prefixing."""
+        return self.API_PREFIX
+
     def get_cors_origins(self) -> List[str]:
-        """Parse ALLOWED_ORIGINS whether provided as list or comma-separated string."""
-        if isinstance(self.ALLOWED_ORIGINS, str):
-            return [origin.strip() for origin in self.ALLOWED_ORIGINS.split(",") if origin.strip()]
-        return self.ALLOWED_ORIGINS
+        """
+        Builds the list of allowed CORS origins including the configured
+        FRONTEND_URL and standard local development ports.
+        """
+        origins = {
+            self.FRONTEND_URL.rstrip("/"),
+            "http://localhost:5173",
+            "http://127.0.0.1:5173",
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+        }
+        return list(origins)
 
 
 # Singleton settings instance
 settings = Settings()
+
+
+if __name__ == "__main__":
+    print(f"Loaded Settings: App='{settings.APP_NAME}', Env='{settings.ENVIRONMENT}', Port={settings.PORT}")

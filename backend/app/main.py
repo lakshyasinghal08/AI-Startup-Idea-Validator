@@ -10,7 +10,16 @@ Milestone Notes:
     - Future Milestones: Attach database lifespan managers and background task brokers.
 """
 
+import os
+import sys
 from contextlib import asynccontextmanager
+
+# Ensure backend root directory is in sys.path
+_current_dir = os.path.dirname(os.path.abspath(__file__))
+_backend_dir = os.path.abspath(os.path.join(_current_dir, ".."))
+if _backend_dir not in sys.path:
+    sys.path.insert(0, _backend_dir)
+
 from fastapi import FastAPI, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -27,12 +36,12 @@ async def lifespan(app: FastAPI):
     """
     logger.info("=" * 60)
     logger.info(f"Starting {settings.APP_NAME}")
-    logger.info(f"Environment: {settings.ENVIRONMENT} | Debug: {settings.DEBUG}")
-    logger.info(f"API Docs available at: http://{settings.HOST}:{settings.PORT}/docs")
+    logger.info(f"Environment: {settings.ENVIRONMENT} | Port: {settings.PORT}")
+    logger.info(f"API Docs available at: http://localhost:{settings.PORT}/docs")
     logger.info("=" * 60)
-    
+
     yield  # Application processes requests during this block
-    
+
     logger.info("Shutting down application gracefully...")
 
 
@@ -45,7 +54,7 @@ def create_application() -> FastAPI:
         description=(
             "Enterprise Multi-Agent AI system for validating startup ideas, "
             "sizing target markets, discovering competitors, and synthesizing SWOT dossiers. "
-            "Infosys Springboard Virtual Internship 7.0."
+            "Infosys Springboard Virtual Internship 7.0 - Milestone 1."
         ),
         version="1.0.0",
         docs_url="/docs",
@@ -64,9 +73,9 @@ def create_application() -> FastAPI:
     )
 
     # Register Domain API Routers with Versioned Prefix (/api/v1)
-    app.include_router(health_router, prefix=settings.API_V1_PREFIX)
-    app.include_router(idea_router, prefix=settings.API_V1_PREFIX)
-    app.include_router(search_router, prefix=settings.API_V1_PREFIX)
+    app.include_router(health_router, prefix=settings.API_PREFIX)
+    app.include_router(idea_router, prefix=settings.API_PREFIX)
+    app.include_router(search_router, prefix=settings.API_PREFIX)
 
     # Root Endpoint
     @app.get(
@@ -82,21 +91,17 @@ def create_application() -> FastAPI:
                 "version": "1.0.0",
                 "status": "online",
                 "docs": "/docs",
-                "health": f"{settings.API_V1_PREFIX}/health",
+                "health": f"{settings.API_PREFIX}/health/",
             }
         )
 
     return app
 
 
+# Application singleton instance for ASGI servers (Uvicorn / Gunicorn)
 app = create_application()
+
 
 if __name__ == "__main__":
     import uvicorn
-
-    uvicorn.run(
-        "app.main:app",
-        host=settings.HOST,
-        port=settings.PORT,
-        reload=settings.DEBUG,
-    )
+    uvicorn.run("app.main:app", host=settings.HOST, port=settings.PORT, reload=True)

@@ -11,7 +11,16 @@ Milestone Notes:
       and result reranking.
 """
 
+import os
+import sys
 from typing import Any, Dict, List
+
+# Ensure backend root directory is in sys.path
+_current_dir = os.path.dirname(os.path.abspath(__file__))
+_backend_dir = os.path.abspath(os.path.join(_current_dir, "../.."))
+if _backend_dir not in sys.path:
+    sys.path.insert(0, _backend_dir)
+
 from app.services.tavily_service import TavilySearchService
 from app.core.logging import logger
 
@@ -45,3 +54,8 @@ class SearchAgent:
         results = await self.search_service.search(query=query, max_results=5)
         
         return results
+
+
+if __name__ == "__main__":
+    agent = SearchAgent()
+    print("SearchAgent initialized successfully.")

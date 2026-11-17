@@ -1,22 +1,25 @@
 # Data Models & Schema Specification
 
 ## 1. Overview
-This document specifies the persistence data layer and object schemas for the AI Startup Idea Validator, utilizing **SQLAlchemy 2.0 ORM** for PostgreSQL and **Pydantic v2** for validation.
+This document specifies the domain entity models and future persistence schemas for the **AI Startup Idea Validator**.
+
+Project Context: **Infosys Springboard Virtual Internship 7.0**
+
+### Strategic Database Decision (Milestone 1)
+- **Milestone 1 Runtime**: Uses clean in-memory domain entity dataclasses (`StartupIdea`, `ValidationReport`, `SearchResultCache`). No PostgreSQL server or database credentials are required. The project starts instantly and runs with zero database overhead.
+- **Milestone 5 Persistence**: The in-memory domain entities directly map to PostgreSQL relational tables managed by SQLAlchemy 2.0 ORM and Alembic migrations.
 
 ---
 
-## 2. Entity-Relationship Diagram (ERD)
+## 2. Entity-Relationship Diagram (Target Milestone 5 Schema)
 
 ```mermaid
 erDiagram
-    USERS ||--o{ STARTUP_IDEAS : creates
-    STARTUP_IDEAS ||--o{ SEARCH_RESULTS : triggers
+    STARTUP_IDEAS ||--o{ SEARCH_RESULT_CACHES : triggers
     STARTUP_IDEAS ||--|| VALIDATION_REPORTS : produces
-    STARTUP_IDEAS ||--o{ COMPETITORS : identifies
 
     STARTUP_IDEAS {
-        uuid id PK
-        uuid user_id FK
+        string id PK "idea_xxxx"
         string title
         text description
         string target_market
@@ -28,99 +31,79 @@ erDiagram
         timestamp updated_at
     }
 
-    SEARCH_RESULTS {
-        uuid id PK
-        uuid idea_id FK
+    SEARCH_RESULT_CACHES {
+        string id PK "search_xxxx"
+        string idea_id FK
         string query
-        text raw_content
+        text snippet
         string source_url
+        string title
         float relevance_score
         timestamp created_at
     }
 
     VALIDATION_REPORTS {
-        uuid id PK
-        uuid idea_id FK
+        string id PK "report_xxxx"
+        string idea_id FK
         float overall_score
         float feasibility_score
         float market_score
         float uniqueness_score
-        jsonb swot_analysis
-        jsonb market_sizing
+        json swot_analysis
+        json market_sizing
+        json competitor_data
         text summary
-        string pdf_url
-        timestamp created_at
-    }
-
-    COMPETITORS {
-        uuid id PK
-        uuid idea_id FK
-        string name
-        string website
-        text strengths
-        text weaknesses
-        string pricing_model
+        string pdf_report_path
         timestamp created_at
     }
 ```
 
 ---
 
-## 3. Database Entities & Columns
+## 3. Domain Entities & Field Definitions
 
-### 3.1 Startup Ideas (`startup_ideas`)
-- `id` (UUID, Primary Key): Unique identifier.
-- `title` (VARCHAR(255), Not Null): Startup name or title.
-- `description` (TEXT, Not Null): Elevator pitch and problem description.
-- `target_market` (VARCHAR(150), Not Null): Industry domain (e.g., FinTech, HealthTech, EdTech).
-- `target_audience` (VARCHAR(255), Nullable): Target demographic or B2B segment.
-- `estimated_budget` (VARCHAR(100), Nullable): Capital allocation estimate.
-- `monetization_model` (VARCHAR(150), Nullable): Proposed revenue model.
-- `status` (VARCHAR(50), Default 'PENDING'): Processing state (`PENDING`, `IN_PROGRESS`, `COMPLETED`, `FAILED`).
-- `created_at` (TIMESTAMP): Record creation timestamp.
-- `updated_at` (TIMESTAMP): Last modification timestamp.
+### 3.1 Startup Idea (`StartupIdea`)
+- `id` (str, Unique ID): Short identifier, e.g. `idea_a1b2c3d4`.
+- `title` (str, Required): Name or working title of the startup venture.
+- `description` (str, Required): Elevator pitch and core problem-solution explanation.
+- `target_market` (str, Required): Primary industry or market vertical.
+- `target_audience` (str, Optional): Target demographic or B2B customer profile.
+- `estimated_budget` (str, Optional): Initial planned capital outlay.
+- `monetization_model` (str, Optional): Proposed revenue mechanism (e.g., B2B SaaS).
+- `status` (str, Default 'PENDING'): Processing lifecycle state (`PENDING`, `IN_PROGRESS`, `COMPLETED`, `FAILED`).
+- `created_at` (datetime): Timestamp when idea was submitted.
+- `updated_at` (datetime): Timestamp of latest modification.
 
-### 3.2 Search Results (`search_results`)
-- `id` (UUID, Primary Key): Unique search item ID.
-- `idea_id` (UUID, Foreign Key): References `startup_ideas.id`.
-- `query` (VARCHAR(255)): Executed search query.
-- `raw_content` (TEXT): Text content retrieved from Tavily.
-- `source_url` (VARCHAR(500)): Link to original source.
-- `created_at` (TIMESTAMP): Timestamp.
+### 3.2 Validation Report (`ValidationReport`)
+- `id` (str, Unique ID): Short identifier, e.g. `report_a1b2c3d4`.
+- `idea_id` (str, Foreign Identifier): Associated startup idea ID.
+- `overall_score` (float, 0–100): Composite idea viability score.
+- `feasibility_score` (float, 0–100): Technical and operational feasibility rating.
+- `market_score` (float, 0–100): Market size and consumer demand rating.
+- `uniqueness_score` (float, 0–100): Differentiation against competitors.
+- `swot_analysis` (dict): Structured strengths, weaknesses, opportunities, threats.
+- `market_sizing` (dict): TAM, SAM, SOM metrics.
+- `competitor_data` (list): Identified competitors and differentiators.
+- `summary` (str, Optional): Executive synthesis of evaluation findings.
+- `pdf_report_path` (str, Optional): Path or URL to rendered PDF report.
+- `created_at` (datetime): Creation timestamp.
 
-### 3.3 Validation Reports (`validation_reports`)
-- `id` (UUID, Primary Key): Unique report ID.
-- `idea_id` (UUID, Foreign Key): References `startup_ideas.id`.
-- `overall_score` (FLOAT): 0-100 composite index.
-- `feasibility_score` (FLOAT): 0-100 feasibility rating.
-- `market_score` (FLOAT): 0-100 market demand rating.
-- `uniqueness_score` (FLOAT): 0-100 differentiation rating.
-- `swot_analysis` (JSONB): Strengths, Weaknesses, Opportunities, Threats.
-- `market_sizing` (JSONB): TAM, SAM, SOM metrics and sources.
-- `summary` (TEXT): High-level executive evaluation.
-- `pdf_url` (VARCHAR(500), Nullable): Path or cloud link to generated PDF.
-- `created_at` (TIMESTAMP): Timestamp.
+### 3.3 Search Result Cache (`SearchResultCache`)
+- `id` (str, Unique ID): Short identifier, e.g. `search_a1b2c3d4`.
+- `idea_id` (str, Optional): Associated startup idea ID if generated during validation.
+- `query` (str, Required): Executed web search query.
+- `source_url` (str, Optional): URL of web source.
+- `title` (str, Optional): Article or website title.
+- `snippet` (str, Required): Content snippet extracted from search result.
+- `relevance_score` (float): Relevance ranking (0.0 to 1.0).
+- `created_at` (datetime): Timestamp when result was fetched.
 
 ---
 
-## 4. Pydantic Request & Response Data Contracts
-
-### 4.1 IdeaInputSchema
-```python
-class IdeaInputSchema(BaseModel):
-    title: str = Field(..., min_length=3, max_length=200)
-    description: str = Field(..., min_length=20, max_length=5000)
-    target_market: str = Field(..., min_length=2, max_length=150)
-    target_audience: Optional[str] = None
-    estimated_budget: Optional[str] = None
-    monetization_model: Optional[str] = None
-```
-
-### 4.2 StandardApiResponse
-```python
-class ApiResponse(BaseModel, Generic[T]):
-    success: bool
-    data: Optional[T] = None
-    message: str = "Operation completed"
-    errors: Optional[List[Dict[str, Any]]] = None
-```
+## 4. API Request & Response Schemas (Pydantic v2)
+The HTTP interface is strictly enforced via Pydantic models in `app/schemas/idea_schema.py` and `app/schemas/response_schema.py`:
+- `IdeaCreateRequest`: Validates incoming user submissions.
+- `IdeaValidationResponse`: Serializes comprehensive multi-agent validation dossiers.
+- `MarketSearchRequest`: Validates market search queries.
+- `MarketSearchResponse`: Serializes search snippets.
+- `ApiResponse[T]`: Universal generic response wrapper ensuring `{ success, data, message, errors }`.

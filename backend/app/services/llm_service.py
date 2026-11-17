@@ -10,7 +10,16 @@ Milestone Notes:
     - Milestone 2: Production client setup with structured output validation (Pydantic / Instructor).
 """
 
+import os
+import sys
 from typing import Any, Dict, Optional
+
+# Ensure backend root directory is in sys.path
+_current_dir = os.path.dirname(os.path.abspath(__file__))
+_backend_dir = os.path.abspath(os.path.join(_current_dir, "../.."))
+if _backend_dir not in sys.path:
+    sys.path.insert(0, _backend_dir)
+
 from app.core.config import settings
 from app.core.logging import logger
 
@@ -71,3 +80,8 @@ class LLMService:
             "status": "placeholder",
             "message": "Structured LLM output scheduled for Milestone 2.",
         }
+
+
+if __name__ == "__main__":
+    service = LLMService()
+    print("LLMService initialized successfully with provider:", service.provider)

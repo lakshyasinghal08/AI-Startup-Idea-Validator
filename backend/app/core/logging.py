@@ -11,8 +11,16 @@ Milestone Notes:
       (e.g., Datadog, CloudWatch, or Render Log Streams).
 """
 
-import logging
+import os
 import sys
+import logging
+
+# Ensure backend root directory is in sys.path
+_current_dir = os.path.dirname(os.path.abspath(__file__))
+_backend_dir = os.path.abspath(os.path.join(_current_dir, "../.."))
+if _backend_dir not in sys.path:
+    sys.path.insert(0, _backend_dir)
+
 from app.core.config import settings
 
 
@@ -40,3 +48,6 @@ def setup_logging() -> logging.Logger:
 
 
 logger = setup_logging()
+
+if __name__ == "__main__":
+    logger.info("Structured Logger Module Loaded and Initialized Successfully!")

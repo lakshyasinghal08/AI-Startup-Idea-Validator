@@ -10,6 +10,15 @@ Milestone Notes:
     - Milestone 3: Live Tavily API integration and caching.
 """
 
+import os
+import sys
+
+# Ensure backend root directory is in sys.path for direct execution and package imports
+_current_dir = os.path.dirname(os.path.abspath(__file__))
+_backend_dir = os.path.abspath(os.path.join(_current_dir, "../../.."))
+if _backend_dir not in sys.path:
+    sys.path.insert(0, _backend_dir)
+
 from fastapi import APIRouter, status
 from app.schemas.response_schema import ApiResponse
 from app.schemas.idea_schema import (
@@ -29,7 +38,7 @@ router = APIRouter(prefix="/search", tags=["Market Search"])
     summary="Search Market & Competitor Intelligence",
     description="Runs a targeted web search query to retrieve real-time market data snippets.",
 )
-async def search_market(payload: MarketSearchRequest):
+def search_market(payload: MarketSearchRequest):
     """
     Executes a web search query for market and competitor intelligence.
 
@@ -65,3 +74,10 @@ async def search_market(payload: MarketSearchRequest):
         data=response_data,
         message="Market search completed successfully (Milestone 1 skeleton)",
     )
+
+
+if __name__ == "__main__":
+    print("Market Search Route Module Loaded Successfully!")
+    test_search = MarketSearchRequest(query="AI Logistics Startups", max_results=2)
+    res = search_market(test_search)
+    print("Search Results Count:", res.data.total_results)

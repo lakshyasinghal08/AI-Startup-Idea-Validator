@@ -10,6 +10,15 @@ Milestone Notes:
     - Milestone 2 & 4: Link to multi-agent orchestrator execution and persistent storage.
 """
 
+import os
+import sys
+
+# Ensure backend root directory is in sys.path
+_current_dir = os.path.dirname(os.path.abspath(__file__))
+_backend_dir = os.path.abspath(os.path.join(_current_dir, "../../.."))
+if _backend_dir not in sys.path:
+    sys.path.insert(0, _backend_dir)
+
 from fastapi import APIRouter, HTTPException, status
 from app.schemas.response_schema import ApiResponse
 from app.schemas.idea_schema import (
@@ -31,7 +40,7 @@ router = APIRouter(prefix="/idea", tags=["Idea Validation"])
     summary="Submit Startup Idea for Validation",
     description="Accepts startup details and triggers the multi-agent market validation workflow.",
 )
-async def validate_idea(payload: IdeaCreateRequest):
+def validate_idea(payload: IdeaCreateRequest):
     """
     Submits a startup idea for multi-agent evaluation.
 
@@ -98,7 +107,7 @@ async def validate_idea(payload: IdeaCreateRequest):
     summary="Get Validation Report by ID",
     description="Retrieves a previously generated startup validation report by its unique ID.",
 )
-async def get_idea_validation(idea_id: str):
+def get_idea_validation(idea_id: str):
     """
     Retrieves a validation report by ID.
 
@@ -132,3 +141,14 @@ async def get_idea_validation(idea_id: str):
         data=mock_response,
         message="Report retrieved successfully",
     )
+
+
+if __name__ == "__main__":
+    print("Startup Idea Validation Route Module Loaded Successfully!")
+    test_req = IdeaCreateRequest(
+        title="Test Idea",
+        description="Testing direct idea route execution.",
+        target_market="Tech",
+    )
+    res = validate_idea(test_req)
+    print("Direct Execution Result:", res.data.title, "- Status:", res.data.status)

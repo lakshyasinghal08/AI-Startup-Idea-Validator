@@ -10,7 +10,16 @@ Milestone Notes:
     - Milestone 6: ReportLab PDF styling, chart generation, and persistent document storage.
 """
 
+import os
+import sys
 from typing import Any, Dict
+
+# Ensure backend root directory is in sys.path
+_current_dir = os.path.dirname(os.path.abspath(__file__))
+_backend_dir = os.path.abspath(os.path.join(_current_dir, "../.."))
+if _backend_dir not in sys.path:
+    sys.path.insert(0, _backend_dir)
+
 from app.core.logging import logger
 
 
@@ -46,3 +55,8 @@ class ReportAgent:
             "pdf_generated": False,
             "pdf_url": None,
         }
+
+
+if __name__ == "__main__":
+    agent = ReportAgent()
+    print("ReportAgent initialized successfully.")

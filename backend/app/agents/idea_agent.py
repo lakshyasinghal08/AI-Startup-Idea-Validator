@@ -1,6 +1,6 @@
 """
 Idea Validation Agent
-=====================
+============
 Purpose:
     Evaluates the startup idea's foundational viability, clarity of problem statement,
     solution defensibility, and initial product-market fit indicators.
@@ -10,7 +10,16 @@ Milestone Notes:
     - Milestone 2: Prompt engineering pipelines and structured scoring algorithms.
 """
 
+import os
+import sys
 from typing import Any, Dict
+
+# Ensure backend root directory is in sys.path
+_current_dir = os.path.dirname(os.path.abspath(__file__))
+_backend_dir = os.path.abspath(os.path.join(_current_dir, "../.."))
+if _backend_dir not in sys.path:
+    sys.path.insert(0, _backend_dir)
+
 from app.services.llm_service import LLMService
 from app.core.logging import logger
 
@@ -45,3 +54,8 @@ class IdeaAgent:
             "uniqueness_score": 70.0,
             "critique": f"Preliminary evaluation placeholder for {title}. LLM evaluation pipeline activates in Milestone 2.",
         }
+
+
+if __name__ == "__main__":
+    agent = IdeaAgent()
+    print("IdeaAgent initialized successfully.")
