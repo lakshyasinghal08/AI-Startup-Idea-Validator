@@ -1,13 +1,9 @@
+
 """
 Idea Validation Agent
-============
-Purpose:
-    Evaluates the startup idea's foundational viability, clarity of problem statement,
-    solution defensibility, and initial product-market fit indicators.
-
-Milestone Notes:
-    - Milestone 1: Agent skeleton, method signatures, and logging placeholders.
-    - Milestone 2: Prompt engineering pipelines and structured scoring algorithms.
+=====================
+Evaluates a startup idea's viability, problem clarity, solution defensibility,
+feasibility, uniqueness, and initial product-market fit.
 """
 
 import os
@@ -17,6 +13,7 @@ from typing import Any, Dict
 # Ensure backend root directory is in sys.path
 _current_dir = os.path.dirname(os.path.abspath(__file__))
 _backend_dir = os.path.abspath(os.path.join(_current_dir, "../.."))
+
 if _backend_dir not in sys.path:
     sys.path.insert(0, _backend_dir)
 
@@ -34,26 +31,74 @@ class IdeaAgent:
 
     async def execute(self, idea_data: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Analyzes the submitted startup idea and generates core feasibility scores.
-
-        Args:
-            idea_data: Dictionary containing title, description, target market, etc.
-
-        Returns:
-            Dictionary containing idea feasibility scores and value proposition critique.
-
-        Note:
-            Placeholder method for Milestone 1. Full LLM logic to be implemented in Milestone 2.
+        Evaluates a startup idea using an LLM and returns structured results.
         """
-        title = idea_data.get("title", "Untitled Idea")
-        logger.info(f"[IdeaAgent] Evaluating feasibility for '{title}' (placeholder)")
 
-        return {
-            "overall_score": 75.0,
-            "feasibility_score": 80.0,
-            "uniqueness_score": 70.0,
-            "critique": f"Preliminary evaluation placeholder for {title}. LLM evaluation pipeline activates in Milestone 2.",
-        }
+        title = idea_data.get("title", "Untitled Idea")
+        description = idea_data.get("description", "")
+
+        logger.info(f"[IdeaAgent] Evaluating startup idea: {title}")
+
+        system_prompt = """
+You are an expert startup analyst and business idea evaluator.
+
+Evaluate startup ideas objectively. Do not blindly praise ideas.
+Consider practical business conditions, risks, and market needs.
+
+Return ONLY valid JSON with the following fields:
+
+{
+    "overall_score": number,
+    "feasibility_score": number,
+    "uniqueness_score": number,
+    "problem_clarity_score": number,
+    "market_potential_score": number,
+    "solution_defensibility_score": number,
+    "critique": "string",
+    "strengths": ["string"],
+    "weaknesses": ["string"],
+    "recommendations": ["string"]
+}
+
+Scoring rules:
+- All scores must be between 0 and 100.
+- overall_score should represent the overall quality of the startup idea.
+- feasibility_score should evaluate whether the idea can realistically be built and launched.
+- uniqueness_score should evaluate differentiation from existing solutions.
+- problem_clarity_score should evaluate how clearly the idea addresses a real problem.
+- market_potential_score should evaluate its potential customer demand and growth.
+- solution_defensibility_score should evaluate how difficult it would be for competitors to copy.
+- Do not invent research, statistics, or verified market data.
+- If information is missing, mention the uncertainty in the critique.
+- Keep the critique specific to the submitted startup idea.
+"""
+
+        user_prompt = f"""
+Evaluate the following startup idea.
+
+Startup Title: {title}
+
+Startup Description: {description}
+
+Additional Information:
+{idea_data}
+
+Provide your evaluation in the required JSON format.
+"""
+
+        try:
+            result = await self.llm_service.generate_structured_json(
+                system_prompt=system_prompt,
+                user_prompt=user_prompt,
+            )
+
+            logger.info(f"[IdeaAgent] Successfully evaluated idea: {title}")
+
+            return result
+
+        except Exception as e:
+            logger.error(f"[IdeaAgent] Evaluation failed for '{title}': {e}")
+            raise
 
 
 if __name__ == "__main__":
