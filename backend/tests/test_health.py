@@ -4,8 +4,8 @@ Health & API Route Test Suite
 Purpose:
     Validates core FastAPI routes (/health, /idea/validate, /idea/{id}, /search/market, /).
     Architected for high portability:
-    - Runs cleanly under pytest in CI/CD pipeline.
-    - Runs cleanly under direct Python execution.
+- Runs cleanly under pytest in CI/CD pipeline.
+- Runs cleanly under direct Python execution.
 
 Infosys Springboard Virtual Internship 7.0 - Milestone 1
 """
@@ -30,6 +30,18 @@ from app.schemas.idea_schema import (
     MarketSearchRequest,
     MarketSearchResponse,
 )
+
+
+def _extract_paths(routes, prefix=""):
+    """Recursively extract route paths, handling FastAPI _IncludedRouter wrappers."""
+    paths = []
+    for route in routes:
+        if hasattr(route, "path"):
+            paths.append(prefix + route.path)
+        elif hasattr(route, "routes"):
+            route_prefix = getattr(route, "prefix", "")
+            paths.extend(_extract_paths(route.routes, prefix + route_prefix))
+    return paths
 
 
 class TestHealthAndRoutes(unittest.TestCase):
@@ -98,7 +110,7 @@ class TestHealthAndRoutes(unittest.TestCase):
 
     def test_app_routes_registration(self):
         """Verify all required API endpoints are mounted on the FastAPI application."""
-        registered_paths = [route.path for route in app.routes]
+        registered_paths = _extract_paths(app.routes)
         expected_paths = [
             "/",
             "/api/v1/health/",
@@ -139,7 +151,7 @@ def test_pytest_idea_validation():
 
 def test_pytest_routes():
     """Pytest hook for route registration verification."""
-    paths = [r.path for r in app.routes]
+    paths = _extract_paths(app.routes)
     assert "/api/v1/health/" in paths
     assert "/api/v1/idea/validate" in paths
     assert "/api/v1/search/market" in paths
