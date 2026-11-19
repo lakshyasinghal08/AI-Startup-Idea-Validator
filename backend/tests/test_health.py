@@ -32,16 +32,11 @@ from app.schemas.idea_schema import (
 )
 
 
-def _extract_paths(routes, prefix=""):
-    """Recursively extract route paths, handling FastAPI _IncludedRouter wrappers."""
-    paths = []
-    for route in routes:
-        if hasattr(route, "path"):
-            paths.append(prefix + route.path)
-        elif hasattr(route, "routes"):
-            route_prefix = getattr(route, "prefix", "")
-            paths.extend(_extract_paths(route.routes, prefix + route_prefix))
-    return paths
+def _extract_paths(fastapi_app):
+    """Collect all top-level and mounted router paths from the FastAPI app."""
+    paths = {route.path for route in fastapi_app.routes if hasattr(route, "path")}
+    paths.update(fastapi_app.openapi().get("paths", {}).keys())
+    return list(paths)
 
 
 class TestHealthAndRoutes(unittest.TestCase):
@@ -110,7 +105,7 @@ class TestHealthAndRoutes(unittest.TestCase):
 
     def test_app_routes_registration(self):
         """Verify all required API endpoints are mounted on the FastAPI application."""
-        registered_paths = _extract_paths(app.routes)
+        registered_paths = _extract_paths(app)
         expected_paths = [
             "/",
             "/api/v1/health/",
@@ -151,7 +146,7 @@ def test_pytest_idea_validation():
 
 def test_pytest_routes():
     """Pytest hook for route registration verification."""
-    paths = _extract_paths(app.routes)
+    paths = _extract_paths(app)
     assert "/api/v1/health/" in paths
     assert "/api/v1/idea/validate" in paths
     assert "/api/v1/search/market" in paths
