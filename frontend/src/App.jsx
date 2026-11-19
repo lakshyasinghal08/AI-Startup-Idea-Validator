@@ -3,12 +3,13 @@ import { Routes, Route } from 'react-router-dom';
 import MainLayout from '@/layouts/MainLayout';
 import HomePage from '@/pages/HomePage';
 import ValidatorPage from '@/pages/ValidatorPage';
-import ReportsPage from '@/pages/ReportsPage';
+import AboutPage from '@/pages/AboutPage';
 import NotFoundPage from '@/pages/NotFoundPage';
 
 /**
  * Root Application Component
- * Defines top-level route tree using React Router DOM.
+ * Defines declarative route tree using React Router DOM.
+ * Only includes Home, Validator, About, and 404 pages for Milestone 1.
  */
 export const App = () => {
   return (
@@ -16,7 +17,7 @@ export const App = () => {
       <Route path="/" element={<MainLayout />}>
         <Route index element={<HomePage />} />
         <Route path="validator" element={<ValidatorPage />} />
-        <Route path="reports" element={<ReportsPage />} />
+        <Route path="about" element={<AboutPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>

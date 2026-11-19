@@ -6,12 +6,11 @@ Purpose:
     CORS policies, and external service credentials using Pydantic Settings.
 
 Milestone Notes:
-    - Milestone 1: Baseline configuration and environment variable loading.
-    - Future Milestones: Integrate database connection pooling, LLM provider credentials,
-      and OAuth2 secret keys.
+    - Milestone 1: Environment variable loading and API configurations.
+    - Future Milestones: Integrate database connection pooling and OAuth2 secret keys.
 """
 
-from typing import List, Union
+from typing import List, Optional
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -29,15 +28,25 @@ class Settings(BaseSettings):
     HOST: str = "0.0.0.0"
     API_PREFIX: str = "/api/v1"
 
-    # External AI & Search APIs (Milestone 2 & 3 Placeholders)
-    OPENAI_API_KEY: str = Field(
-        default="",
-        description="API key for OpenAI models (GPT-4o/mini)",
-    )
+    # AI Foundation Model APIs (Priority 1: Gemini, Priority 2: OpenAI, Priority 3: Groq)
     GEMINI_API_KEY: str = Field(
         default="",
         description="API key for Google Gemini models",
     )
+    OPENAI_API_KEY: str = Field(
+        default="",
+        description="API key for OpenAI models (GPT-4o/mini)",
+    )
+    GROQ_API_KEY: str = Field(
+        default="",
+        description="API key for Groq models (Llama 3.3)",
+    )
+    DEFAULT_LLM_PROVIDER: str = Field(
+        default="auto",
+        description="LLM provider: 'auto', 'gemini', 'openai', or 'groq'",
+    )
+
+    # Real-Time Web Search API
     TAVILY_API_KEY: str = Field(
         default="",
         description="API key for Tavily real-time web search service",

@@ -2,7 +2,7 @@ import React from 'react';
 
 export const Card = ({ children, title, subtitle, className = '', headerAction }) => {
   return (
-    <div className={`bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden ${className}`}>
+    <div className={`bg-white rounded-lg border border-slate-200 ${className}`}>
       {(title || subtitle || headerAction) && (
         <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
           <div>

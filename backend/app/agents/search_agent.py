@@ -2,18 +2,13 @@
 Search Agent
 ============
 Purpose:
-    Autonomous agent responsible for formulating search queries, querying Tavily API,
-    crawling relevant industry snippets, and compiling web ground-truth context.
-
-Milestone Notes:
-    - Milestone 1: Agent skeleton, method signatures, and logging placeholders.
-    - Milestone 3: Query expansion algorithms, Tavily live search integration,
-      and result reranking.
+    Formulates targeted market search queries, calls Tavily Search API,
+    and returns verified web intelligence snippets for downstream agents.
 """
 
 import os
 import sys
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 # Ensure backend root directory is in sys.path
 _current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -21,41 +16,32 @@ _backend_dir = os.path.abspath(os.path.join(_current_dir, "../.."))
 if _backend_dir not in sys.path:
     sys.path.insert(0, _backend_dir)
 
-from app.services.tavily_service import TavilySearchService
+from app.services.tavily_service import TavilySearchService, tavily_service
 from app.core.logging import logger
 
 
 class SearchAgent:
     """
-    Agent responsible for live web research and data gathering.
+    Autonomous agent responsible for querying live web intelligence via Tavily.
     """
 
-    def __init__(self, search_service: TavilySearchService | None = None):
-        self.search_service = search_service or TavilySearchService()
+    def __init__(self, service: Optional[TavilySearchService] = None):
+        self.search_service = service or tavily_service
 
-    async def execute(self, idea_title: str, target_market: str) -> List[Dict[str, Any]]:
+    def execute(self, startup_name: str, industry: str, problem_or_solution: str) -> List[Dict[str, Any]]:
         """
-        Executes web search workflows to gather competitor and market data.
-
-        Args:
-            idea_title: Working title of the startup.
-            target_market: Industry domain or vertical.
-
-        Returns:
-            List of relevant contextual search articles and snippets.
-
-        Note:
-            Placeholder method for Milestone 1. Business logic to be implemented in Milestone 3.
+        Formulates targeted search operators and retrieves real-time web market context.
         """
-        logger.info(f"[SearchAgent] Commencing web research for '{idea_title}' in market '{target_market}'")
-        
-        # Placeholder search query logic
-        query = f"top competitors and market size for {target_market} startups like {idea_title}"
-        results = await self.search_service.search(query=query, max_results=5)
-        
-        return results
+        query = f"{startup_name} {industry} market trends competitors {problem_or_solution[:60]}".strip()
+        logger.info(f"[SearchAgent] Querying Tavily web research with: '{query}'")
+        return self.search_service.search(query=query, max_results=5)
+
+
+# Singleton instance
+search_agent = SearchAgent()
 
 
 if __name__ == "__main__":
     agent = SearchAgent()
-    print("SearchAgent initialized successfully.")
+    res = agent.execute("PrepAI", "EdTech", "AI interview preparation for students")
+    print("SearchAgent Test Results Count:", len(res))

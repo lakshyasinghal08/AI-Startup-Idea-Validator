@@ -3,12 +3,12 @@
 <div align="center">
 
 ![Infosys Springboard](https://img.shields.io/badge/Infosys_Springboard-Virtual_Internship_7.0-007acc?style=for-the-badge&logo=infosys&logoColor=white)
+![Author](https://img.shields.io/badge/Author-Lakshya_Singhal-blue?style=for-the-badge&logo=github)
 ![Python Version](https://img.shields.io/badge/Python-3.12%2B-3776AB?style=for-the-badge&logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115%2B-009688?style=for-the-badge&logo=fastapi&logoColor=white)
 ![React 19](https://img.shields.io/badge/React-19.0-61DAFB?style=for-the-badge&logo=react&logoColor=black)
 ![Vite](https://img.shields.io/badge/Vite-6.0-646CFF?style=for-the-badge&logo=vite&logoColor=white)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.4-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)
-![Docker](https://img.shields.io/badge/Docker-Enabled-2496ED?style=for-the-badge&logo=docker&logoColor=white)
 ![License: MIT](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
 
 <p align="center">
@@ -23,63 +23,65 @@
 
 ## 📌 Executive Summary
 
-Early-stage venture creation faces an existential hurdle: **over 90% of startups fail due to lack of market need**. Founders and accelerators spend weeks conducting fragmented manual market sizing, competitive landscape scraping, and subjective SWOT assessments.
+Early-stage venture creation faces an existential hurdle: **over 90% of startups fail due to lack of market need**. Founders, accelerators, and venture evaluators spend weeks conducting fragmented manual market sizing, competitive landscape scraping, and subjective SWOT assessments.
 
 The **AI-Based Startup Idea Validator** transforms this process into an automated, data-grounded workflow. Using a **specialized ensemble of autonomous AI agents**, the platform:
-- Validates the core problem-solution fit and customer pain points.
-- Retrieves live, real-time web intelligence and market signals using the **Tavily Search API**.
-- Derives algorithmic **TAM, SAM, and SOM** market sizing calculations.
-- Discovers direct and indirect competitors with pricing and moat comparisons.
-- Synthesizes an evidence-based, 4-quadrant **Strategic SWOT Matrix**.
-- Packages findings into downloadable, investor-ready **Executive Validation Dossiers (PDF & Markdown)**.
+- **Single-Input Natural Language Interface:** Accepts a single startup description (e.g., *"I want to build an AI platform that helps students prepare for interviews."*) and automatically extracts core dimensions (problem, solution, audience, industry, model) via LLM.
+- **Multi-Provider LLM Integration:** Powered by Google Gemini (Priority 1), OpenAI (Priority 2), and Groq (Priority 3) with intelligent fallback resilience.
+- **Live Market Web Intelligence:** Retrieves live industry trends, competitive signals, and market demand using the **Tavily Search API**.
+- **Market Sizing Projections:** Derives algorithmic **TAM, SAM, SOM**, and **CAGR** growth metrics tailored to the vertical.
+- **Competitive Moat Analysis:** Maps direct incumbents, indirect substitutes, and sustainable defensive moats.
+- **Strategic SWOT Matrix:** Synthesizes internal strengths and external threats into an objective 4-quadrant strategic matrix.
+- **13-Section Consulting Dossier:** Formatted in top-tier management consulting style (McKinsey, BCG, Deloitte) with cards, clean typography, validation scoring, and zero chart clutter.
+
+> **Note on Architecture & Deployment:** The project is deliberately designed to be **lightweight, modular, and self-contained**. It runs directly on your local machine using standard Python and Node.js in-memory without requiring Docker or any external database setup, making it immediately testable and reproducible for evaluations. Database persistence is planned for Milestone 5.
 
 ---
 
 ## 🏛️ System Architecture
 
-The project is structured according to **Clean Architecture** and **Component-Driven Design**, decoupling presentation, business logic, agent orchestration, and persistence layers.
+The project is structured according to **Clean Architecture** and **Component-Driven Design**, decoupling presentation, business logic, agent orchestration, and domain models.
 
 ```mermaid
 graph TB
-    subgraph Client Tier [Presentation Tier - Vercel]
-        User([Entrepreneur / Investor]) --> SPA[React 19 Single Page App]
-        SPA --> Router[React Router DOM v7]
-        Router --> Views[Modular Views: Home | Validator | Reports]
-        Views --> AxiosClient[Axios Client with Interceptors]
+    subgraph ClientTier ["Presentation Layer (React 19 + Vite)"]
+        User["Entrepreneur / Investor"] --> SPA["React 19 Single Page App"]
+        SPA --> Router["React Router DOM v7"]
+        Router --> Views["Modular Views: Home, Validator, Reports"]
+        Views --> AxiosClient["Axios HTTP Client Layer"]
     end
 
-    subgraph Gateway Tier [API & Security Gateway - Render]
-        AxiosClient -->|RESTful JSON / HTTPS| FastAPIGateway[FastAPI ASGI Gateway]
-        FastAPIGateway --> CORSSecurity[CORS & Security Policies]
-        FastAPIGateway --> RequestLogging[Structured Request Logger]
-        FastAPIGateway --> Routers[Versioned Routers: /api/v1/*]
+    subgraph GatewayTier ["API Gateway Layer (FastAPI ASGI)"]
+        AxiosClient -->|RESTful JSON| FastAPIGateway["FastAPI Gateway (:8000)"]
+        FastAPIGateway --> CORSSecurity["CORS & Origin Security"]
+        FastAPIGateway --> RequestLogging["Structured Request Logger"]
+        FastAPIGateway --> Routers["Versioned API Routers (/api/v1)"]
     end
 
-    subgraph Core AI Tier [Autonomous Multi-Agent Network]
-        Routers --> Orchestrator[Agent Orchestrator Pipeline]
-        Orchestrator --> SearchAgent[1. Search Agent - Tavily Search API]
-        SearchAgent -.->|Ground-Truth Context| ContextBus[(Market Context Buffer)]
+    subgraph CoreAITier ["Autonomous Multi-Agent Network"]
+        Routers --> Orchestrator["Multi-Agent Orchestrator Pipeline"]
+        Orchestrator --> SearchAgent["1. Search Agent (Tavily Search API)"]
+        SearchAgent -.->|Market Context| ContextBus["Market Intelligence Buffer"]
         
-        ContextBus --> IdeaAgent[2. Idea Agent - Feasibility & Value Prop]
-        ContextBus --> MarketAgent[3. Market Agent - TAM / SAM / SOM Sizing]
-        ContextBus --> CompetitorAgent[4. Competitor Agent - Moat & Landscape]
+        ContextBus --> IdeaAgent["2. Idea Agent (Feasibility & Value Prop)"]
+        ContextBus --> MarketAgent["3. Market Agent (TAM / SAM / SOM Sizing)"]
+        ContextBus --> CompetitorAgent["4. Competitor Agent (Moats & Landscape)"]
         
-        IdeaAgent & MarketAgent & CompetitorAgent --> SWOTAgent[5. SWOT Agent - Strategic Synthesis]
-        SWOTAgent --> ReportAgent[6. Report Agent - PDF / Markdown Brief]
+        IdeaAgent & MarketAgent & CompetitorAgent --> SWOTAgent["5. SWOT Agent (Strategic Synthesis)"]
+        SWOTAgent --> ReportAgent["6. Report Agent (Validation Brief)"]
     end
 
-    subgraph Service Tier [External Providers & Foundation Models]
-        SearchAgent --> TavilyAPI[Tavily Real-Time Web API]
-        IdeaAgent --> LLMService[LLM Engine: OpenAI GPT-4o / Google Gemini]
+    subgraph ServiceTier ["Integration & Foundation Models"]
+        SearchAgent --> TavilyAPI["Tavily Real-Time Web Service"]
+        IdeaAgent --> LLMService["LLM Provider (OpenAI / Gemini)"]
         MarketAgent --> LLMService
         CompetitorAgent --> LLMService
         SWOTAgent --> LLMService
-        ReportAgent --> PDFEngine[ReportLab PDF Engine]
     end
 
-    subgraph Persistence Tier [Data Tier - PostgreSQL]
-        Routers --> SQLAlchemyORM[SQLAlchemy 2.0 ORM]
-        SQLAlchemyORM --> PostgresDB[(PostgreSQL Relational Database)]
+    subgraph PersistenceTier ["Data & Domain Model Layer"]
+        Routers --> DomainModels["In-Memory Domain Entity Models"]
+        DomainModels --> CacheStore["Fast In-Memory Mock Store"]
     end
 ```
 
@@ -94,7 +96,7 @@ graph TB
 | **Market Agent** | Analyzes industry CAGR, demographic trends, and computes TAM/SAM/SOM. | Target audience, geographic focus | Quantified market size estimates, growth factors |
 | **Competitor Agent** | Identifies existing market leaders, emergent startups, and defensive moats. | Product category, search snippets | Competitor profiles, feature comparison, moats |
 | **SWOT Agent** | Cross-correlates multi-agent findings into an objective 4-quadrant strategic matrix. | Outputs of Idea, Market, & Competitor agents | Structured SWOT matrix (S, W, O, T) |
-| **Report Agent** | Assembles structured data into executive summaries and compiles PDF dossiers. | Consolidated JSON validation payload | Downloadable PDF dossier & Markdown report |
+| **Report Agent** | Assembles structured data into executive summaries and compiles validation dossiers. | Consolidated JSON validation payload | Standardized Validation Dossier & Executive Brief |
 
 ---
 
@@ -102,27 +104,26 @@ graph TB
 
 ### Frontend Architecture
 - **Framework:** [React 19](https://react.dev/) (Component-Based UI Architecture)
-- **Tooling & Bundler:** [Vite 6](https://vitejs.dev/) (Blazing fast HMR and optimized production bundles)
+- **Tooling & Bundler:** [Vite 6](https://vitejs.dev/) (Fast HMR and optimized production bundles)
 - **Styling:** [Tailwind CSS 3.4](https://tailwindcss.com/) (Responsive, utility-first design system)
 - **HTTP Client:** [Axios](https://axios-http.com/) (Configured with request/response interceptors)
 - **Routing:** [React Router DOM](https://reactrouter.com/) (Declarative client-side routing)
-- **Icons:** [Lucide React](https://lucide.dev/) (Consistent modern iconography)
+- **Icons:** [Lucide React](https://lucide.dev/) (Modern iconography)
 
 ### Backend Architecture
 - **Runtime:** [Python 3.12+](https://www.python.org/)
-- **Web Framework:** [FastAPI](https://fastapi.tiangolo.com/) (High-performance, async ASGI framework)
-- **Application Server:** [Uvicorn](https://www.uvicorn.org/) (Lightning-fast ASGI server)
+- **Web Framework:** [FastAPI](https://fastapi.tiangolo.com/) (High-performance ASGI framework)
+- **Application Server:** [Uvicorn](https://www.uvicorn.org/) (High-concurrency ASGI server)
 - **Data Validation:** [Pydantic v2](https://docs.pydantic.dev/) & `pydantic-settings`
-- **Database & ORM:** [SQLAlchemy 2.0](https://www.sqlalchemy.org/) (PostgreSQL-ready declarative models)
+- **Domain Modeling:** Clean in-memory Python dataclasses (Zero database configuration required)
 - **Environment Management:** `python-dotenv`
 
-### DevOps & Infrastructure
-- **Containerization:** Docker & Docker Compose (Multi-service container orchestration)
-- **CI/CD:** GitHub Actions (Automated linting, dependency caching, and pytest pipelines)
-- **Hosting Targets:**
+### Quality Assurance & CI/CD
+- **Automated Testing:** `pytest` & Python `unittest` test suites
+- **Continuous Integration:** GitHub Actions (`.github/workflows/backend.yml` & `frontend.yml`)
+- **Deployment Targets:**
   - **Frontend:** Vercel (Edge CDN Network)
   - **Backend:** Render (Web Service ASGI Container)
-  - **Database:** Render PostgreSQL / Supabase
 
 ---
 
@@ -132,8 +133,8 @@ graph TB
 AI-Startup-Idea-Validator/
 ├── .github/
 │   └── workflows/
-│       ├── backend.yml            # CI: Backend linting, compile, and pytest
-│       └── frontend.yml           # CI: Node.js setup, npm dependencies, Vite build
+│       ├── backend.yml            # CI: Backend linting, compileall, and test suite
+│       └── frontend.yml           # CI: Node.js setup, dependencies, and Vite build
 │
 ├── backend/
 │   ├── app/
@@ -152,17 +153,17 @@ AI-Startup-Idea-Validator/
 │   │   │   ├── market_agent.py    # TAM / SAM / SOM market sizing agent
 │   │   │   ├── competitor_agent.py# Competitive landscape & moat agent
 │   │   │   ├── swot_agent.py      # Strategic SWOT matrix agent
-│   │   │   └── report_agent.py    # PDF dossier & executive brief agent
+│   │   │   └── report_agent.py    # Validation dossier & executive brief agent
 │   │   │
 │   │   ├── core/
 │   │   │   ├── __init__.py
 │   │   │   ├── config.py          # Centralized Pydantic Settings & CORS
 │   │   │   └── logging.py         # Standardized structured application logger
 │   │   │
-│   │   ├── models/                # SQLAlchemy 2.0 Database Persistence Models
-│   │   │   ├── __init__.py        # ORM Base declaration & registry
-│   │   │   ├── idea.py            # StartupIdea & ValidationReport models
-│   │   │   └── search_result.py   # SearchResultCache model
+│   │   ├── models/                # Domain Entity Models (In-Memory)
+│   │   │   ├── __init__.py        # Domain model exports
+│   │   │   ├── idea.py            # StartupIdea & ValidationReport entities
+│   │   │   └── search_result.py   # SearchResultCache domain entity
 │   │   │
 │   │   ├── schemas/               # Pydantic v2 Request/Response Data Contracts
 │   │   │   ├── __init__.py
@@ -182,12 +183,11 @@ AI-Startup-Idea-Validator/
 │   │
 │   ├── tests/
 │   │   ├── __init__.py
-│   │   └── test_health.py         # Pytest & TestClient validation suite
+│   │   └── test_health.py         # Unit testing and route verification suite
 │   │
-│   ├── requirements.txt           # Production Python dependencies
+│   ├── requirements.txt           # Lean Python dependencies
 │   ├── .env.example               # Backend environment variables template
 │   ├── .gitignore                 # Python virtualenv & bytecode ignore rules
-│   ├── Dockerfile                 # ASGI production container specification
 │   └── README.md                  # Backend developer guide
 │
 ├── frontend/
@@ -219,9 +219,9 @@ AI-Startup-Idea-Validator/
 │   │   │   └── MainLayout.jsx     # Top-level page layout container
 │   │   │
 │   │   ├── pages/
-│   │   │   ├── HomePage.jsx       # Hero landing page & health probe
-│   │   │   ├── ValidatorPage.jsx  # Idea submission form & SWOT viewer
-│   │   │   ├── ReportsPage.jsx    # Validation history & PDF download hub
+│   │   │   ├── HomePage.jsx       # Landing page with core overview & quick start
+│   │   │   ├── ValidatorPage.jsx  # Single-input idea validator & 13-section consulting report
+│   │   │   ├── AboutPage.jsx      # Architecture, internship details, and team info
 │   │   │   └── NotFoundPage.jsx   # 404 error page
 │   │   │
 │   │   ├── styles/
@@ -239,17 +239,16 @@ AI-Startup-Idea-Validator/
 │   ├── tailwind.config.js         # Tailwind design system configuration
 │   ├── postcss.config.js          # PostCSS configuration
 │   ├── .gitignore                 # Node & build artifact ignore rules
-│   ├── Dockerfile                 # Multi-stage production container build (Nginx)
 │   └── README.md                  # Frontend developer guide
 │
 ├── docs/                          # Comprehensive Architectural Documentation
 │   ├── architecture.md            # Clean Architecture specification
 │   ├── api-flow.md                # REST API schemas & sequence diagrams
 │   ├── agent-design.md            # Multi-agent coordination blueprint
-│   ├── data-models.md             # Relational ER diagrams & Pydantic contracts
+│   ├── data-models.md             # Domain entities & future schema contracts
 │   └── milestone-1.md             # Milestone 1 delivery report
 │
-├── docker-compose.yml             # Unified local development orchestration
+├── docker-compose.yml             # Local multi-service specification
 ├── LICENSE                        # Open-source MIT License
 ├── .gitignore                     # Repository-level ignore rules
 └── README.md                      # Master project README
@@ -262,7 +261,7 @@ AI-Startup-Idea-Validator/
 ### Prerequisites
 - **Python**: 3.12 or newer
 - **Node.js**: v20 or newer (v24 LTS recommended)
-- **Docker**: Optional, for containerized local execution
+- **Database/Docker**: *None required.* The application runs completely in-memory with zero external service dependencies.
 
 ---
 
@@ -315,16 +314,6 @@ npm run dev
 
 ---
 
-### 3. Containerized Setup (Docker Compose)
-
-To launch the entire stack (FastAPI Backend + React Frontend + PostgreSQL Database) with a single command:
-
-```bash
-docker-compose up --build
-```
-
----
-
 ## 📡 API Endpoints & Contract Overview
 
 All endpoints return responses encapsulated in a standardized `ApiResponse` envelope:
@@ -333,9 +322,9 @@ All endpoints return responses encapsulated in a standardized `ApiResponse` enve
 | :--- | :--- | :--- | :--- |
 | `GET` | `/` | Root server status and API index | Active |
 | `GET` | `/api/v1/health/` | Liveness probe and environment diagnostics | Active |
-| `POST` | `/api/v1/idea/validate` | Submits idea for multi-agent evaluation | Milestone 1 (Contract Ready) |
-| `GET` | `/api/v1/idea/{idea_id}` | Retrieves validation report by unique ID | Milestone 1 (Contract Ready) |
-| `POST` | `/api/v1/search/market` | Runs real-time web search for market insights | Milestone 1 (Contract Ready) |
+| `POST` | `/api/v1/idea/validate` | Submits idea for multi-agent evaluation | Active (Mock Contract) |
+| `GET` | `/api/v1/idea/{idea_id}` | Retrieves validation report by unique ID | Active (Mock Contract) |
+| `POST` | `/api/v1/search/market` | Runs real-time web search for market insights | Active (Mock Contract) |
 
 ### Sample Validation Request:
 ```bash
@@ -366,22 +355,59 @@ curl -X POST "http://127.0.0.1:8000/api/v1/idea/validate" \
       "uniqueness": 81.0
     },
     "swot": {
-      "strengths": ["Strong initial focus on Logistics & Supply Chain", "Clear value proposition defined"],
-      "weaknesses": ["High initial customer acquisition costs", "Requires early strategic partnerships"],
-      "opportunities": ["Expanding addressable market through AI automation"],
-      "threats": ["Rapidly evolving competitive landscape"]
+      "strengths": [
+        "Strong initial focus on Logistics & Supply Chain",
+        "Clear value proposition defined"
+      ],
+      "weaknesses": [
+        "High initial customer acquisition costs",
+        "Requires early strategic partnerships"
+      ],
+      "opportunities": [
+        "Expanding addressable market through AI automation"
+      ],
+      "threats": [
+        "Rapidly evolving competitive landscape"
+      ]
     },
     "summary": "Preliminary validation for 'EcoLogix': Concept demonstrates viable product-market fit indicators.",
-    "competitors": ["Competitor One (Market Leader)", "Competitor Two (Emerging Challenger)"],
+    "competitors": [
+      "Competitor One (Market Leader)",
+      "Competitor Two (Emerging Challenger)"
+    ],
     "market_sizing": {
       "tam": "$12.8B global sector size",
       "sam": "$2.5B serviceable market",
       "som": "$180M initial beachhead"
     }
   },
-  "message": "Idea validation completed successfully",
+  "message": "Idea validation completed successfully (Milestone 1 skeleton)",
   "errors": null
 }
+```
+
+---
+
+## 🧪 Testing & Verification
+
+Run the automated test suite to verify route registration and API controller contracts:
+
+```bash
+# Execute test suite directly
+python backend/tests/test_health.py
+```
+
+Expected output:
+```text
+test_app_routes_registration: ok
+test_get_idea_validation_by_id: ok
+test_health_check_controller: ok
+test_idea_validation_controller: ok
+test_market_search_controller: ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.008s
+OK
 ```
 
 ---
@@ -389,39 +415,9 @@ curl -X POST "http://127.0.0.1:8000/api/v1/idea/validate" \
 ## 🌿 Version Control & Git Strategy
 
 Following enterprise Git hygiene:
-- **`main`**: **Production branch**. Strictly protected. Contains verified, deployable code. Auto-deploys to production on Vercel and Render.
-- **`staging`**: **Integration & Development branch**. Used for active feature testing and staging verification prior to release merges into `main`.
-- **Feature Branches**: Formatted as `feature/<milestone-number>-<feature-description>` (e.g. `feature/m2-llm-integration`).
-
----
-
-## 🎯 Milestone Roadmap
-
-- [x] **Milestone 1: Project Initialization & Clean Architecture**
-  - Industry-standard directory skeleton and modular decoupling.
-  - FastAPI application with versioned routes (`/api/v1/*`), CORS, and structured logging.
-  - React 19 + Vite + Tailwind CSS frontend with component-based architecture.
-  - GitHub Actions CI/CD workflows and `docker-compose.yml`.
-  - Comprehensive architectural and API documentation (`docs/`).
-- [ ] **Milestone 2: LLM Engine & Prompt Engineering**
-  - Integration of OpenAI / Google Gemini via `llm_service.py`.
-  - Structured prompt chains for problem-solution validation in `idea_agent.py`.
-- [ ] **Milestone 3: Real-Time Market Intelligence**
-  - Integration of Tavily Search API in `tavily_service.py` and `search_agent.py`.
-  - Snippet extraction, noise filtering, and caching layer in `search_result.py`.
-- [ ] **Milestone 4: Autonomous Multi-Agent Orchestration**
-  - Concurrent execution of `MarketAgent` and `CompetitorAgent`.
-  - Synthesis of strategic 4-quadrant matrix via `SWOTAgent`.
-- [ ] **Milestone 5: Relational Persistence & User Accounts**
-  - PostgreSQL database connectivity with SQLAlchemy 2.0 and Alembic migrations.
-  - User authentication and persistent history tracking.
-- [ ] **Milestone 6: Analytics Dashboard & Report Generation**
-  - Interactive radar and bar charts for validation metrics in React frontend.
-  - Investor-ready PDF dossier generation via `ReportLab` in `report_agent.py`.
-- [ ] **Milestone 7: Production Deployment & Final Release**
-  - Vercel deployment for React 19 frontend.
-  - Render deployment for containerized FastAPI backend.
-  - End-to-end integration testing and final project submission.
+- **`main`**: **Production branch**. Strictly protected. Contains verified, deployable code.
+- **`staging`**: **Integration & Development branch**. Used for active feature verification prior to release merges into `main`.
+- **Feature Branches**: Formatted as `feature/<feature-description>`.
 
 ---
 
@@ -436,12 +432,14 @@ For in-depth architectural and technical blueprints, consult the documentation d
 
 ---
 
-## 📄 License
+## 👥 Authors & Project Attribution
 
-This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for complete details.
+- **Developer:** [Lakshya Singhal](https://github.com/lakshyasinghal08)
+- **Repository:** [AI-Startup-Idea-Validator](https://github.com/lakshyasinghal08/AI-Startup-Idea-Validator)
+- **Program:** Infosys Springboard Virtual Internship 7.0
 
 ---
 
-<div align="center">
-  <sub>Developed for the <strong>Infosys Springboard Virtual Internship 7.0</strong></sub>
-</div>
+## 📄 License
+
+This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for complete details.
