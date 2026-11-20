@@ -77,6 +77,20 @@ class TestHealthAndRoutes(unittest.TestCase):
         self.assertGreater(len(response.data.swot.threats), 0)
         self.assertIn("tam", response.data.market_sizing)
 
+    def test_single_input_idea_validation(self):
+        """Verify POST /api/v1/idea/validate processes single raw text input."""
+        payload = IdeaCreateRequest(
+            idea="I want to build an AI platform that helps students prepare for interviews."
+        )
+        response = validate_idea(payload)
+
+        self.assertTrue(response.success)
+        self.assertIsInstance(response.data, IdeaValidationResponse)
+        self.assertEqual(response.data.status, "completed")
+        self.assertGreater(response.data.overall_validation_score, 0.0)
+        self.assertIsNotNone(response.data.executive_summary)
+        self.assertIsNotNone(response.data.market_research)
+
     def test_get_idea_validation_by_id(self):
         """Verify GET /api/v1/idea/{idea_id} retrieves validation dossier."""
         test_id = "idea_test_7788"

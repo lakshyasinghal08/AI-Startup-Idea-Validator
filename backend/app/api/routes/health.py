@@ -29,12 +29,14 @@ router = APIRouter(prefix="/health", tags=["Health"])
 
 @router.get(
     "/",
+    response_model=Dict[str, Any],
     status_code=status.HTTP_200_OK,
     summary="Service Health Check",
     response_description="Returns runtime status and server environment",
 )
 @router.get(
     "",
+    response_model=Dict[str, Any],
     status_code=status.HTTP_200_OK,
     include_in_schema=False,
 )

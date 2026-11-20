@@ -55,16 +55,22 @@ class MarketAgent:
         else:
             tam, sam, som, cagr = "$12.8B Global Enterprise Sector", "$2.6B Addressable Segment", "$185M 3-Year Beachhead", "14.2% CAGR"
 
+        demand_drivers = (
+            f"Elevated demand for automation, rising cost pressures in {industry}, "
+            "and an ongoing migration away from fragmented manual workflows toward integrated intelligence platforms."
+        )
+        if search_snippets and len(search_snippets) > 0:
+            snippet_text = search_snippets[0].get("content", "").strip()
+            if len(snippet_text) > 30:
+                demand_drivers = f"{demand_drivers} Market signal: {snippet_text[:150]}..."
+
         return {
             "market_demand_score": 82.0,
             "tam": tam,
             "sam": sam,
             "som": som,
             "cagr": cagr,
-            "demand_drivers": (
-                f"Elevated demand for automation, rising cost pressures in {industry}, "
-                "and an ongoing migration away from fragmented manual workflows toward integrated intelligence platforms."
-            ),
+            "demand_drivers": demand_drivers,
         }
 
 

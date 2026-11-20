@@ -7,7 +7,7 @@ Purpose:
 
 Milestone Notes:
     - Milestone 1: Data transfer schema declarations with type validation and single-input support.
-    - Future Milestones: Will be connected to LLM prompt formatting and agent pipelines.
+    - Future Milestones: Will be connected to persistent storage and PDF exports.
 """
 
 from typing import Any, Dict, List, Optional
@@ -121,29 +121,34 @@ class IdeaValidationResponse(BaseModel):
     """
     Schema for completed idea validation consulting dossier returned to frontend.
     Formatted similar to top-tier strategy consulting briefs (McKinsey, BCG, Deloitte).
-    Contains all 13 consulting sections with full backward compatibility.
+    Contains all 16 consulting sections with full backward compatibility.
     """
     id: str = Field(..., description="Unique validation ID")
     title: str = Field(..., description="Startup idea title")
     status: str = Field(default="completed", description="Analysis execution state")
     scores: ValidationScores = Field(default_factory=ValidationScores)
 
-    # 13 Primary Consulting Report Sections
+    # 16 Primary Consulting Report Sections
     executive_summary: Optional[str] = Field(default="", description="1. Executive Summary")
-    idea_overview: Optional[str] = Field(default="", description="2. Idea Overview")
+    startup_overview: Optional[str] = Field(default="", description="2. Startup Overview")
     problem_statement: Optional[str] = Field(default="", description="3. Problem Statement")
     proposed_solution: Optional[str] = Field(default="", description="4. Proposed Solution")
     target_customers: Optional[str] = Field(default="", description="5. Target Customers")
-    market_analysis: Dict[str, Any] = Field(default_factory=dict, description="6. Market Analysis (TAM/SAM/SOM/CAGR)")
-    competitor_analysis: Dict[str, Any] = Field(default_factory=dict, description="7. Competitor Analysis")
-    swot_analysis: SWOTAnalysis = Field(default_factory=SWOTAnalysis, description="8. SWOT Analysis")
-    business_opportunities: List[str] = Field(default_factory=list, description="9. Business Opportunities")
-    potential_risks: List[str] = Field(default_factory=list, description="10. Potential Risks")
-    recommendations: List[str] = Field(default_factory=list, description="11. Recommendations")
-    overall_validation_score: float = Field(default=0.0, description="12. Overall Validation Score")
-    final_conclusion: str = Field(default="", description="13. Final Conclusion")
+    industry: Optional[str] = Field(default="", description="6. Industry")
+    business_model: Optional[str] = Field(default="", description="7. Business Model")
+    market_research: Optional[str] = Field(default="", description="8. Market Research")
+    market_trends: List[str] = Field(default_factory=list, description="9. Market Trends")
+    competitor_analysis: Dict[str, Any] = Field(default_factory=dict, description="10. Competitor Analysis")
+    swot_analysis: SWOTAnalysis = Field(default_factory=SWOTAnalysis, description="11. SWOT Analysis")
+    opportunities: List[str] = Field(default_factory=list, description="12. Opportunities")
+    risks: List[str] = Field(default_factory=list, description="13. Risks")
+    recommendations: List[str] = Field(default_factory=list, description="14. Recommendations")
+    overall_validation_score: float = Field(default=0.0, description="15. Overall Validation Score")
+    final_conclusion: str = Field(default="", description="16. Final Conclusion")
 
     # Supporting & Backward-Compatibility Fields
+    idea_overview: Optional[str] = Field(default="", description="Alias for Startup Overview")
+    market_analysis: Dict[str, Any] = Field(default_factory=dict, description="Market Analysis")
     problem_solution_fit: str = Field(
         default="",
         description="Evaluation of customer pain alignment and solution defensibility",
@@ -157,14 +162,10 @@ class IdeaValidationResponse(BaseModel):
         description="Identified competitor names",
     )
     swot: SWOTAnalysis = Field(default_factory=SWOTAnalysis)
-    business_risks: List[str] = Field(
-        default_factory=list,
-        description="Operational, technical, regulatory, and market risks",
-    )
-    growth_opportunities: List[str] = Field(
-        default_factory=list,
-        description="Scalability levers, geographic expansion, and product expansion",
-    )
+    business_opportunities: List[str] = Field(default_factory=list, description="Alias for Opportunities")
+    business_risks: List[str] = Field(default_factory=list, description="Alias for Risks")
+    potential_risks: List[str] = Field(default_factory=list, description="Alias for Risks")
+    growth_opportunities: List[str] = Field(default_factory=list, description="Alias for Opportunities")
     summary: str = Field(default="", description="Executive synthesis of the evaluation")
     market_sizing: Dict[str, str] = Field(
         default_factory=dict,
