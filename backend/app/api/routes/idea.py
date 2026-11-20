@@ -47,9 +47,9 @@ router = APIRouter(prefix="/idea", tags=["Idea Validation"])
     summary="Submit Startup Idea for Validation",
     description="Accepts startup details or single natural language idea and triggers the multi-agent pipeline.",
 )
-def validate_idea(payload: IdeaCreateRequest):
+def validate_idea(payload: IdeaCreateRequest) -> ApiResponse[IdeaValidationResponse]:
     """
-    Submits a startup idea for multi-agent evaluation and generates a 13-section consulting report.
+    Submits a startup idea for multi-agent evaluation and generates a 16-section consulting report.
 
     Pipeline:
       1. IdeaAgent: Uses LLM to extract structured attributes (problem, solution, audience, industry, model).
@@ -57,7 +57,7 @@ def validate_idea(payload: IdeaCreateRequest):
       3. MarketAgent: Estimates TAM, SAM, SOM, CAGR, and growth drivers.
       4. CompetitorAgent: Maps direct and indirect competitors and moats.
       5. SWOTAgent: Builds 4-quadrant strategic matrix.
-      6. ReportAgent: Synthesizes findings into 13 management consulting sections.
+      6. ReportAgent: Synthesizes findings into 16 management consulting sections.
     """
     raw_idea = (payload.idea or payload.description or payload.title or "").strip()
     logger.info(f"[IdeaRoute] Starting multi-agent validation pipeline for idea: '{raw_idea[:80]}...'")
@@ -150,25 +150,32 @@ def validate_idea(payload: IdeaCreateRequest):
         status="completed",
         scores=val_scores,
         executive_summary=report_dict.get("executive_summary", ""),
-        idea_overview=report_dict.get("idea_overview", ""),
+        startup_overview=report_dict.get("startup_overview") or report_dict.get("idea_overview", ""),
         problem_statement=report_dict.get("problem_statement", ""),
         proposed_solution=report_dict.get("proposed_solution", ""),
         target_customers=report_dict.get("target_customers", ""),
-        market_analysis=report_dict.get("market_analysis", {}),
+        industry=report_dict.get("industry", industry),
+        business_model=report_dict.get("business_model", business_model),
+        market_research=report_dict.get("market_research", ""),
+        market_trends=report_dict.get("market_trends", []),
         competitor_analysis=report_dict.get("competitor_analysis", {}),
         swot_analysis=swot_obj,
-        business_opportunities=report_dict.get("business_opportunities", []),
-        potential_risks=report_dict.get("potential_risks", []),
+        opportunities=report_dict.get("opportunities", []),
+        risks=report_dict.get("risks", []),
         recommendations=report_dict.get("recommendations", []),
         overall_validation_score=val_scores.overall,
         final_conclusion=report_dict.get("final_conclusion", ""),
         # Backward compatibility
+        idea_overview=report_dict.get("startup_overview") or report_dict.get("idea_overview", ""),
+        market_analysis=report_dict.get("market_analysis", {}),
+        business_opportunities=report_dict.get("opportunities", []),
+        potential_risks=report_dict.get("risks", []),
+        business_risks=report_dict.get("risks", []),
+        growth_opportunities=report_dict.get("opportunities", []),
         problem_solution_fit=report_dict.get("proposed_solution", ""),
         market_potential=report_dict.get("market_analysis", {}),
         competitors=report_dict.get("competitors", []),
         swot=swot_obj,
-        business_risks=report_dict.get("potential_risks", []),
-        growth_opportunities=report_dict.get("business_opportunities", []),
         summary=report_dict.get("executive_summary", ""),
         market_sizing=report_dict.get("market_sizing", {}),
     )
@@ -187,12 +194,12 @@ def validate_idea(payload: IdeaCreateRequest):
     summary="Get Validation Report by ID",
     description="Retrieves a previously generated startup validation report by its unique ID.",
 )
-def get_idea_validation(idea_id: str):
+def get_idea_validation(idea_id: str) -> ApiResponse[IdeaValidationResponse]:
     """
     Retrieves a validation report by ID.
 
     Note:
-        In Milestone 1, returns a structured report with 13 consulting sections.
+        In Milestone 1, returns a structured report with 16 consulting sections.
         Persistent database storage will be connected in Milestone 5.
     """
     logger.info(f"[IdeaRoute] Fetching report for ID: '{idea_id}'")
@@ -217,10 +224,19 @@ def get_idea_validation(idea_id: str):
         status="completed",
         scores=val_scores,
         executive_summary="Executive Validation Dossier: Demonstrates solid market fundamentals and addressable competitive moats.",
+        startup_overview="A high-velocity automated workflow platform serving high-growth digital segments.",
         idea_overview="A high-velocity automated workflow platform serving high-growth digital segments.",
         problem_statement="Fragmented tooling and labor-intensive manual methods leading to lost economic output.",
         proposed_solution="Automated, intelligent platform delivering rapid turnaround and measurable efficiency.",
         target_customers="Enterprise and SME teams seeking automated productivity.",
+        industry="B2B SaaS & Artificial Intelligence",
+        business_model="Monthly Recurring SaaS Subscription",
+        market_research="Industry data indicates strong enterprise demand for workflow acceleration tools.",
+        market_trends=[
+            "Migration toward automated domain intelligence.",
+            "Rising customer preference for specialized outcome tools.",
+            "Demand for transparent benchmarking.",
+        ],
         market_analysis={
             "tam": "$12.8B Global Enterprise Sector",
             "sam": "$2.6B Addressable Segment",
@@ -234,8 +250,12 @@ def get_idea_validation(idea_id: str):
             "defensive_moats": ["Proprietary feedback loops and high switching costs"],
         },
         swot_analysis=swot_obj,
+        opportunities=["Beachhead expansion", "Tiered licensing", "API ecosystem"],
+        risks=["Customer acquisition friction", "Incumbent bundling", "User retention"],
         business_opportunities=["Beachhead expansion", "Tiered licensing", "API ecosystem"],
         potential_risks=["Customer acquisition friction", "Incumbent bundling", "User retention"],
+        business_risks=["Customer acquisition friction", "Incumbent bundling", "User retention"],
+        growth_opportunities=["Beachhead expansion", "Tiered licensing", "API ecosystem"],
         recommendations=["Validate with 20 user interviews", "Ship lean MVP in 45 days", "Secure 3 pilot agreements"],
         overall_validation_score=82.0,
         final_conclusion="Strategic Verdict: Highly Viable with defined execution milestones.",
@@ -244,9 +264,6 @@ def get_idea_validation(idea_id: str):
         market_potential={"tam": "$12.8B", "sam": "$2.6B", "som": "$185M"},
         competitors=["Incumbent Corp", "Point Solution Startup"],
         swot=swot_obj,
-        business_risks=["Customer acquisition friction", "Incumbent bundling"],
-        growth_opportunities=["Beachhead expansion", "Tiered licensing"],
-        recommendations_list=["Validate with 20 user interviews", "Ship lean MVP"],
         summary="Historical report retrieval.",
         market_sizing={"tam": "$12.8B", "sam": "$2.6B", "som": "$185M"},
     )

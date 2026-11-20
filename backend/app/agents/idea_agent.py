@@ -1,22 +1,14 @@
-
 """
-<<<<<<< HEAD
 Idea Validation & Extraction Agent
 ==================================
 Purpose:
     Extracts structured startup attributes (problem, solution, audience, industry, model)
-    from raw idea text and evaluates foundational viability.
-=======
-Idea Validation Agent
-=====================
-Evaluates a startup idea's viability, problem clarity, solution defensibility,
-feasibility, uniqueness, and initial product-market fit.
->>>>>>> origin/feature/poojitha
+    from raw idea text and evaluates foundational viability and problem-solution fit.
 """
 
 import os
 import sys
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Union
 
 # Ensure backend root directory is in sys.path
 _current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -32,6 +24,7 @@ from app.core.logging import logger
 class IdeaAgent:
     """
     Agent responsible for extracting structured startup attributes and foundational feasibility.
+    Supports both synchronous and asynchronous execution pipelines.
     """
 
     def __init__(self, service: Optional[LLMService] = None):
@@ -39,7 +32,6 @@ class IdeaAgent:
 
     def extract_idea(self, raw_idea: str) -> Dict[str, Any]:
         """
-<<<<<<< HEAD
         Extracts structured startup details from unstructured user text using the LLM.
         """
         logger.info("[IdeaAgent] Extracting structured venture information via LLM...")
@@ -65,76 +57,62 @@ class IdeaAgent:
             "feasibility_score": 85.0,
             "uniqueness_score": 81.0,
         }
-=======
-        Evaluates a startup idea using an LLM and returns structured results.
+
+    def execute_sync(self, idea_data: Union[Dict[str, Any], str]) -> Dict[str, Any]:
         """
+        Synchronously executes idea extraction and feasibility evaluation on structured or raw idea input.
+        """
+        if isinstance(idea_data, str):
+            extracted = self.extract_idea(idea_data)
+            title = extracted.get("startup_name", "Startup Idea")
+            target_market = extracted.get("industry", "Technology & Services")
+            desc = idea_data
+        else:
+            title = idea_data.get("title") or idea_data.get("startup_name")
+            desc = idea_data.get("description") or idea_data.get("idea") or ""
+            target_market = idea_data.get("target_market") or idea_data.get("industry")
+            combined_prompt = f"{title or 'Startup Idea'}: {desc}" if title else desc
+            extracted = self.extract_idea(combined_prompt)
 
-        title = idea_data.get("title", "Untitled Idea")
-        description = idea_data.get("description", "")
+        # Merge extracted attributes with explicit user overrides
+        startup_name = title or extracted.get("startup_name", "Startup Idea")
+        industry = target_market or extracted.get("industry", "Technology & Services")
+        problem = extracted.get("problem_statement") or desc
+        solution = extracted.get("proposed_solution") or desc
+        customers = extracted.get("target_customers") or target_market or "Target Users"
+        model = extracted.get("business_model") or "Freemium Subscription (SaaS)"
 
-        logger.info(f"[IdeaAgent] Evaluating startup idea: {title}")
+        merged = {
+            "startup_name": startup_name,
+            "industry": industry,
+            "problem_statement": problem,
+            "proposed_solution": solution,
+            "target_customers": customers,
+            "business_model": model,
+        }
 
-        system_prompt = """
-You are an expert startup analyst and business idea evaluator.
+        eval_result = self.evaluate(merged)
 
-Evaluate startup ideas objectively. Do not blindly praise ideas.
-Consider practical business conditions, risks, and market needs.
+        return {
+            "title": startup_name,
+            "startup_name": startup_name,
+            "industry": industry,
+            "problem_statement": problem,
+            "proposed_solution": solution,
+            "target_customers": customers,
+            "business_model": model,
+            "problem_solution_fit": eval_result.get("problem_solution_fit", ""),
+            "feasibility_score": eval_result.get("feasibility_score", 85.0),
+            "uniqueness_score": eval_result.get("uniqueness_score", 81.0),
+        }
 
-Return ONLY valid JSON with the following fields:
+    async def execute(self, idea_data: Union[Dict[str, Any], str]) -> Dict[str, Any]:
+        """Asynchronously executes idea extraction and feasibility evaluation."""
+        return self.execute_sync(idea_data)
 
-{
-    "overall_score": number,
-    "feasibility_score": number,
-    "uniqueness_score": number,
-    "problem_clarity_score": number,
-    "market_potential_score": number,
-    "solution_defensibility_score": number,
-    "critique": "string",
-    "strengths": ["string"],
-    "weaknesses": ["string"],
-    "recommendations": ["string"]
-}
-
-Scoring rules:
-- All scores must be between 0 and 100.
-- overall_score should represent the overall quality of the startup idea.
-- feasibility_score should evaluate whether the idea can realistically be built and launched.
-- uniqueness_score should evaluate differentiation from existing solutions.
-- problem_clarity_score should evaluate how clearly the idea addresses a real problem.
-- market_potential_score should evaluate its potential customer demand and growth.
-- solution_defensibility_score should evaluate how difficult it would be for competitors to copy.
-- Do not invent research, statistics, or verified market data.
-- If information is missing, mention the uncertainty in the critique.
-- Keep the critique specific to the submitted startup idea.
-"""
-
-        user_prompt = f"""
-Evaluate the following startup idea.
-
-Startup Title: {title}
-
-Startup Description: {description}
-
-Additional Information:
-{idea_data}
-
-Provide your evaluation in the required JSON format.
-"""
-
-        try:
-            result = await self.llm_service.generate_structured_json(
-                system_prompt=system_prompt,
-                user_prompt=user_prompt,
-            )
-
-            logger.info(f"[IdeaAgent] Successfully evaluated idea: {title}")
-
-            return result
-
-        except Exception as e:
-            logger.error(f"[IdeaAgent] Evaluation failed for '{title}': {e}")
-            raise
->>>>>>> origin/feature/poojitha
+    async def aexecute(self, idea_data: Union[Dict[str, Any], str]) -> Dict[str, Any]:
+        """Async alias for execute()."""
+        return self.execute_sync(idea_data)
 
 
 # Singleton instance

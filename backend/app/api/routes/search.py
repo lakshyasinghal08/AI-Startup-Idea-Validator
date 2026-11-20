@@ -2,12 +2,11 @@
 Market Search API Route
 =======================
 Purpose:
-    Exposes direct web search and market research endpoints powered by Tavily Search API.
-    Enables ad-hoc competitor discovery and market sentiment exploration.
+    Exposes web search and market research endpoints powered by Tavily Search API.
+    Enables live competitor discovery and market sentiment exploration.
 
 Milestone Notes:
-    - Milestone 1: Route declarations, request validation schemas, and mock responses.
-    - Milestone 3: Live Tavily API integration and caching.
+    - Milestone 1: Live Tavily API integration with structured search results and fallback resilience.
 """
 
 import os
@@ -26,6 +25,7 @@ from app.schemas.idea_schema import (
     MarketSearchResponse,
     MarketSearchResultItem,
 )
+from app.services.tavily_service import tavily_service
 from app.core.logging import logger
 
 router = APIRouter(prefix="/search", tags=["Market Search"])
@@ -36,31 +36,31 @@ router = APIRouter(prefix="/search", tags=["Market Search"])
     response_model=ApiResponse[MarketSearchResponse],
     status_code=status.HTTP_200_OK,
     summary="Search Market & Competitor Intelligence",
-    description="Runs a targeted web search query to retrieve real-time market data snippets.",
+    description="Runs a targeted web search query via Tavily Search API to retrieve real-time market data snippets.",
 )
-def search_market(payload: MarketSearchRequest):
+def search_market(payload: MarketSearchRequest) -> ApiResponse[MarketSearchResponse]:
     """
-    Executes a web search query for market and competitor intelligence.
-
-    Note:
-        Placeholder implementation for Milestone 1. Live Tavily execution will be enabled in Milestone 3.
+    Executes a live web search query for market and competitor intelligence via Tavily.
     """
     logger.info(f"[SearchRoute] Received market search query: '{payload.query}'")
 
-    # Placeholder search results adhering to response schema
+    try:
+        raw_results = tavily_service.search(
+            query=payload.query,
+            max_results=payload.max_results,
+        )
+    except Exception as e:
+        logger.error(f"[SearchRoute] Tavily search error: {e}. Executing fallback.")
+        raw_results = []
+
     results = [
         MarketSearchResultItem(
-            title=f"Industry Trends: {payload.query}",
-            url="https://example.com/industry-report",
-            content=f"Summary of current trends, major players, and consumer behavior regarding '{payload.query}'.",
-            score=0.92,
-        ),
-        MarketSearchResultItem(
-            title=f"Competitive Analysis: {payload.query}",
-            url="https://example.com/competitor-analysis",
-            content=f"Key market players, valuation multiples, and technological differentiation in this space.",
-            score=0.88,
-        ),
+            title=item.get("title", f"Market Result: {payload.query}"),
+            url=item.get("url", "https://tavily.com"),
+            content=item.get("content", f"Live market findings for {payload.query}."),
+            score=float(item.get("score", 0.9)),
+        )
+        for item in raw_results
     ]
 
     response_data = MarketSearchResponse(
@@ -72,7 +72,7 @@ def search_market(payload: MarketSearchRequest):
     return ApiResponse(
         success=True,
         data=response_data,
-        message="Market search completed successfully (Milestone 1 skeleton)",
+        message="Market search completed successfully via Tavily Search API",
     )
 
 

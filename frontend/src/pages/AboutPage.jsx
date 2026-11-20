@@ -49,10 +49,11 @@ export const AboutPage = () => {
             </div>
 
             <div>
-              <h4 className="font-semibold text-slate-900">3. Multi-Agent AI Network (Roadmap)</h4>
+              <h4 className="font-semibold text-slate-900">3. Multi-Agent AI Network</h4>
               <p className="text-slate-600 mt-0.5">
-                Decomposes market evaluation into isolated agent responsibilities: Search Agent (Tavily API), Idea Agent,
-                Market Agent, Competitor Agent, SWOT Agent, and Report Agent.
+                Decomposes market evaluation into isolated agent responsibilities: Idea Agent (LLM extraction),
+                Search Agent (Tavily real-time web intelligence), Market Agent (TAM/SAM/SOM sizing), Competitor Agent (landscape & moats),
+                SWOT Agent (4-quadrant strategic matrix), and Report Agent (16-section consulting dossier).
               </p>
             </div>
 
