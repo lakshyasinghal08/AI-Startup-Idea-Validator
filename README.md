@@ -53,6 +53,20 @@ The **AI-Based Startup Idea Validator** transforms this process into an automate
 
 ---
 
+
+## 🤖 LLM Integration & Intelligent Evaluation
+
+The platform integrates Large Language Models (LLMs) to analyze startup ideas, generate intelligent insights, and support data-driven validation. A reusable LLM service provides a centralized interface for AI-powered operations.
+
+- **Gemini Integration:** Connects with Google's Gemini model for intelligent startup idea analysis and evaluation.
+- **Asynchronous Processing:** Supports asynchronous LLM calls for efficient AI operations.
+- **Structured JSON Generation:** Generates structured AI responses that can be parsed and consumed by different agents.
+- **Retry Mechanism:** Handles temporary API failures with retry logic to improve reliability.
+- **Idea Evaluation Agent:** Analyzes startup ideas based on feasibility, uniqueness, problem clarity, market potential, and solution defensibility.
+- **AI-Generated Insights:** Produces evaluation scores, critical feedback, strengths, weaknesses, and actionable recommendations to help founders refine their ideas.
+
+The modular design allows the LLM service to be reused across multiple agents while keeping AI integration separate from business logic.
+
 ## 3. System Architecture & Workflow
 
 The platform adheres to **Clean Architecture** and **Modular Component Design**:

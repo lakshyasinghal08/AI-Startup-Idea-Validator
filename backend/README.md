@@ -24,6 +24,63 @@ backend/
 └── README.md                   # Developer documentation
 ```
 
+## 🤖 LLM Integration (Google Gemini)
+
+The backend integrates **Google Gemini** to provide AI-powered startup idea evaluation. The integration is designed to be modular, asynchronous, and reusable across AI agents.
+
+### LLM Service
+
+A reusable `LLMService` is implemented in `app/services/llm_service.py` to manage interactions with the Gemini API.
+
+**Features:**
+- Google Gemini API integration for AI-powered analysis.
+- Asynchronous text generation.
+- Structured JSON generation for consistent AI responses.
+- JSON parsing and validation support.
+- Retry handling for temporary API failures such as service unavailability (503).
+- API key management through environment variables.
+
+### Idea Agent Integration
+
+The `IdeaAgent`, implemented in `app/agents/idea_agent.py`, uses the LLM service to evaluate startup ideas and generate structured analysis.
+
+The agent evaluates startup ideas based on the following criteria:
+
+| Evaluation Criteria | Description |
+|---|---|
+| Overall Score | Overall assessment of the startup idea |
+| Feasibility | Practicality of implementing the idea |
+| Uniqueness | Originality and differentiation from existing solutions |
+| Problem Clarity | Clarity and importance of the problem being addressed |
+| Market Potential | Potential demand and business opportunity |
+| Solution Defensibility | Competitive advantage and sustainability |
+
+### AI-Generated Evaluation Output
+
+The Idea Agent generates:
+
+- Overall and individual evaluation scores.
+- Detailed critique of the startup idea.
+- Strengths of the proposed idea.
+- Weaknesses and potential risks.
+- Actionable recommendations for improvement.
+
+### Reliability
+
+The LLM service includes retry logic for temporary API failures. When a request encounters a temporary error, it retries the operation with increasing delays before reporting failure.
+
+This helps improve reliability when external AI services experience temporary availability issues.
+
+### Testing
+
+The Gemini integration and Idea Agent were manually tested to verify:
+
+- Successful text generation.
+- Structured JSON generation and parsing.
+- AI-powered startup idea evaluation.
+- Retry handling during temporary API failures.
+
+The integration enables the backend to generate dynamic startup evaluations using AI rather than relying on predefined or hardcoded evaluation responses.
 ---
 
 ## 🛠️ Local Development Setup
