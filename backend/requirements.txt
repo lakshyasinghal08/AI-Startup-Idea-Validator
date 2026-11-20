@@ -1,0 +1,29 @@
+# ==============================================================================
+# AI Startup Idea Validator - Backend Dependencies
+# Infosys Springboard Virtual Internship 7.0 - Milestone 1
+# ==============================================================================
+
+# ASGI Framework & Web Server
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+
+# Schema Validation & Settings Management
+pydantic>=2.7.0
+pydantic-settings>=2.2.0
+
+# Environment Variables & HTTP Client
+python-dotenv>=1.0.1
+httpx>=0.27.0
+
+# LLM Providers (Gemini, OpenAI, Groq)
+google-genai>=0.1.0
+google-generativeai>=0.8.0
+openai>=1.0.0
+groq>=0.9.0
+
+# Real-Time Web Search
+tavily-python>=0.3.3
+
+# Testing & Quality Assurance
+pytest>=8.2.0
+pytest-asyncio>=0.23.0
