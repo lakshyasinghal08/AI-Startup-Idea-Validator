@@ -1,174 +1,187 @@
-"""
-Tavily Search API Service Client
-================================
-Purpose:
-    Provides an interface to the Tavily AI Search API for retrieving
-    real-time market and competitor intelligence from the live web.
 
-Milestone 1 Implementation:
-    - Real Tavily API integration using Tavily SDK and HTTPX fallback.
-    - Searches for market trends, existing competitors, industry information, and market demand.
-    - Structured error and exception handling with graceful degradation.
+"""
+Tavily Search Service
+=====================
+Purpose:
+    Connects to the Tavily Search API and returns genuine web
+    intelligence results for downstream agents.
 """
 
 import os
 import sys
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
+from urllib.parse import urlparse
+
 import httpx
 
 # Ensure backend root directory is in sys.path
 _current_dir = os.path.dirname(os.path.abspath(__file__))
 _backend_dir = os.path.abspath(os.path.join(_current_dir, "../.."))
+
 if _backend_dir not in sys.path:
     sys.path.insert(0, _backend_dir)
 
 from app.core.config import settings
 from app.core.logging import logger
 
-try:
-    from tavily import TavilyClient
-    HAS_TAVILY_SDK = True
-except ImportError:
-    HAS_TAVILY_SDK = False
+
+class TavilySearchError(Exception):
+    """Raised when Tavily search fails."""
+
+
+class TavilyConfigurationError(TavilySearchError):
+    """Raised when Tavily configuration is missing or invalid."""
 
 
 class TavilySearchService:
-    """
-    Client for Tavily Search Engine tailored for autonomous research agents.
-    """
+    """Service responsible for live Tavily web searches."""
 
-    def __init__(self, api_key: Optional[str] = None):
-        self.api_key = (api_key or settings.TAVILY_API_KEY or "").strip()
-        self.client = None
-        if self.api_key:
-            if HAS_TAVILY_SDK:
-                try:
-                    self.client = TavilyClient(api_key=self.api_key)
-                except Exception as e:
-                    logger.warning(f"Could not initialize TavilyClient SDK: {e}")
-        else:
-            logger.warning("TavilySearchService initialized without API key (fallback mode active).")
+    API_URL = "https://api.tavily.com/search"
+
+    def __init__(self):
+        self.api_key = settings.TAVILY_API_KEY
 
     def is_configured(self) -> bool:
-        """Checks if a valid Tavily API key is configured."""
-        return bool(self.api_key and self.api_key != "tvly-your-tavily-api-key-here")
+        """Check whether a usable Tavily API key is configured."""
+
+        return bool(
+            self.api_key
+            and self.api_key.startswith("tvly-")
+            and "your-tavily-api-key-here" not in self.api_key
+        )
+
+    def _validate_results(
+        self,
+        results: Any
+    ) -> List[Dict[str, Any]]:
+        """Validate and normalize genuine Tavily results."""
+
+        if not isinstance(results, list):
+            raise TavilySearchError(
+                "Tavily returned an invalid results structure."
+            )
+
+        normalized_results = []
+
+        for item in results:
+            if not isinstance(item, dict):
+                continue
+
+            title = item.get("title")
+            url = item.get("url")
+            content = item.get("content")
+            score = item.get("score")
+
+            if not all(
+                isinstance(value, str) and value.strip()
+                for value in (title, url, content)
+            ):
+                continue
+
+            parsed_url = urlparse(url)
+
+            if parsed_url.scheme not in ("http", "https") or not parsed_url.netloc:
+                continue
+
+            try:
+                score = float(score)
+            except (TypeError, ValueError):
+                continue
+
+            normalized_results.append({
+                "title": title.strip(),
+                "url": url.strip(),
+                "content": content.strip(),
+                "score": score,
+            })
+
+        return normalized_results
 
     def search(
         self,
         query: str,
         search_depth: str = "advanced",
-        max_results: int = 5,
+        max_results: int = 5
     ) -> List[Dict[str, Any]]:
         """
-        Executes a real-time web search for market and competitor intelligence.
+        Execute a live Tavily search.
 
-        Args:
-            query: The search phrase (e.g. 'AI student interview preparation market competitors').
-            search_depth: 'basic' or 'advanced'.
-            max_results: Maximum number of search snippets to return.
-
-        Returns:
-            List of structured search items with title, url, content, and relevance score.
+        Returns only genuine results received from Tavily.
+        Never generates fabricated fallback results.
         """
-        query = query.strip()
-        logger.info(f"[TavilyService] Executing live web search for: '{query}'")
+
+        if not isinstance(query, str) or not query.strip():
+            raise ValueError("Search query cannot be empty.")
+
+        if search_depth not in ("basic", "advanced"):
+            raise ValueError(
+                "search_depth must be 'basic' or 'advanced'."
+            )
+
+        if not isinstance(max_results, int) or not 1 <= max_results <= 20:
+            raise ValueError(
+                "max_results must be between 1 and 20."
+            )
 
         if not self.is_configured():
-            logger.warning(f"[TavilyService] No valid TAVILY_API_KEY configured. Returning contextual synthesis for '{query}'.")
-            return self._build_contextual_fallback(query)
+            raise TavilyConfigurationError(
+                "Tavily API key is missing or invalid."
+            )
 
-        # 1. Try via Tavily SDK if available
-        if self.client:
-            try:
-                response = self.client.search(
-                    query=query,
-                    search_depth=search_depth,
-                    max_results=max_results,
-                    include_answer=True,
-                )
-                raw_results = response.get("results", [])
-                formatted = []
-                for item in raw_results:
-                    formatted.append({
-                        "title": item.get("title", "Market Intelligence Document"),
-                        "url": item.get("url", "https://tavily.com"),
-                        "content": item.get("content", "").strip(),
-                        "score": float(item.get("score", 0.9)),
-                    })
-                if formatted:
-                    logger.info(f"[TavilyService] Successfully retrieved {len(formatted)} real-time results via Tavily SDK.")
-                    return formatted
-            except Exception as e:
-                logger.error(f"[TavilyService] SDK search failed with error: {e}. Falling back to HTTP REST API.")
+        payload = {
+            "api_key": self.api_key,
+            "query": query.strip(),
+            "search_depth": search_depth,
+            "max_results": max_results,
+            "include_answer": False,
+        }
 
-        # 2. Try direct HTTPX POST to Tavily REST API
+        logger.info("[TavilyService] Starting live search.")
+
         try:
-            with httpx.Client(timeout=15.0) as http_client:
-                resp = http_client.post(
-                    "https://api.tavily.com/search",
-                    json={
-                        "api_key": self.api_key,
-                        "query": query,
-                        "search_depth": search_depth,
-                        "max_results": max_results,
-                        "include_answer": True,
-                    },
+            with httpx.Client(timeout=30.0) as client:
+                response = client.post(
+                    self.API_URL,
+                    json=payload,
                 )
-                if resp.status_code == 200:
-                    data = resp.json()
-                    raw_results = data.get("results", [])
-                    formatted = [
-                        {
-                            "title": item.get("title", "Market Intelligence Document"),
-                            "url": item.get("url", "https://tavily.com"),
-                            "content": item.get("content", "").strip(),
-                            "score": float(item.get("score", 0.9)),
-                        }
-                        for item in raw_results
-                    ]
-                    logger.info(f"[TavilyService] Successfully retrieved {len(formatted)} real-time results via HTTP REST.")
-                    return formatted
-                else:
-                    logger.warning(f"[TavilyService] HTTP search returned status {resp.status_code}: {resp.text}")
-        except Exception as e:
-            logger.error(f"[TavilyService] Direct HTTP search failed: {e}")
 
-        # 3. Graceful fallback if network or key error
-        return self._build_contextual_fallback(query)
+                response.raise_for_status()
+                data = response.json()
 
-    def _build_contextual_fallback(self, query: str) -> List[Dict[str, Any]]:
-        """Provides structured contextual market signals when external Tavily is unconfigured or unreachable."""
-        return [
-            {
-                "title": f"Market Landscape & Sector Growth: {query}",
-                "url": "https://marketresearch.org/report",
-                "content": (
-                    f"Recent industry analysis shows accelerating adoption across '{query}'. Key market trends "
-                    "highlight rising demand for personalized software, lower operational overhead, and automated workflow integration. "
-                    "Incumbents are investing in AI automation to defend customer retention."
-                ),
-                "score": 0.94,
-            },
-            {
-                "title": f"Competitive Dynamics & Emerging Challengers: {query}",
-                "url": "https://techcrunch.com/analysis",
-                "content": (
-                    f"In the space surrounding '{query}', the market remains bifurcated between legacy enterprise platforms "
-                    "with high implementation friction and newer point-solutions. Startups differentiating on time-to-value, "
-                    "transparent pricing, and frictionless onboarding are capturing market share."
-                ),
-                "score": 0.89,
-            },
-            {
-                "title": f"Ecosystem Trends & Customer Pain Points: {query}",
-                "url": "https://venturebeat.com/trends",
-                "content": (
-                    f"Customer sentiment regarding '{query}' indicates acute frustration with manual processes, "
-                    "expensive licensing tiers, and lack of domain-specific customization. Strong demand exists for specialized tools."
-                ),
-                "score": 0.86,
-            },
-        ]
+            results = self._validate_results(
+                data.get("results", [])
+            )
+
+            logger.info(
+                f"[TavilyService] HTTP REST returned "
+                f"{len(results)} genuine results."
+            )
+
+            return results
+
+        except httpx.HTTPStatusError as exc:
+            logger.error(
+                f"[TavilyService] HTTP error: {exc.response.status_code}"
+            )
+            raise TavilySearchError(
+                "Tavily rejected the search request."
+            ) from exc
+
+        except httpx.RequestError as exc:
+            logger.error(
+                f"[TavilyService] Network request failed: {exc}"
+            )
+            raise TavilySearchError(
+                "Unable to connect to Tavily."
+            ) from exc
+
+        except ValueError as exc:
+            logger.error(
+                f"[TavilyService] Invalid response: {exc}"
+            )
+            raise TavilySearchError(
+                "Tavily returned an invalid response."
+            ) from exc
 
 
 # Singleton instance
@@ -176,7 +189,18 @@ tavily_service = TavilySearchService()
 
 
 if __name__ == "__main__":
-    test_svc = TavilySearchService()
-    results = test_svc.search("AI interview preparation for students")
-    print("Tavily Service Test Result Count:", len(results))
-    print("First Title:", results[0]["title"])
+    try:
+        results = tavily_service.search(
+            "AI interview preparation platforms competitors",
+            max_results=3,
+        )
+
+        print("Results:", len(results))
+
+        for result in results:
+            print("\nTitle:", result["title"])
+            print("URL:", result["url"])
+            print("Score:", result["score"])
+
+    except TavilySearchError as exc:
+        print("Search failed:", exc)
