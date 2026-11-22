@@ -115,9 +115,13 @@ class SearchAgent:
                     all_results.append(result)
 
             except Exception as exc:
-                logger.error(
-                    f"[SearchAgent] Search query {index} failed: {exc}"
+                logger.exception(
+                    "[SearchAgent] Search query %s failed.", index
                 )
+                raise RuntimeError(
+                    f"Market research failed while executing search query {index}. "
+                    "Please retry when the search service is available."
+                ) from exc
 
         logger.info(
             f"[SearchAgent] Research completed. "

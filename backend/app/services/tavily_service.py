@@ -177,10 +177,18 @@ class TavilySearchService:
 
         except ValueError as exc:
             logger.error(
-                f"[TavilyService] Invalid response: {exc}"
+                "[TavilyService] Invalid response: %s", exc
             )
             raise TavilySearchError(
                 "Tavily returned an invalid response."
+            ) from exc
+
+        except Exception as exc:
+            logger.exception(
+                "[TavilyService] Unexpected search failure: %s", exc
+            )
+            raise TavilySearchError(
+                "Tavily search failed unexpectedly. Please try again."
             ) from exc
 
 

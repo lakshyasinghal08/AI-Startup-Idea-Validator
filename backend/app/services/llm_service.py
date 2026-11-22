@@ -9,7 +9,6 @@ Supported Providers (in priority order):
     1. Google Gemini API (gemini-3.5-flash-lite) with exponential backoff retries.
     2. OpenAI GPT (gpt-4o-mini / gpt-4o).
     3. Groq (llama-3.3-70b-versatile / llama-3.1-8b-instant).
-    4. Heuristic Domain Engine (offline/fallback mode when credentials are not configured).
 """
 
 import asyncio
@@ -91,7 +90,7 @@ class LLMService:
         if self.groq_key and not self.groq_key.startswith("your-"):
             return "groq"
 
-        return "heuristic_fallback"
+        return "unconfigured"
 
     def is_configured(self) -> bool:
         """Returns True if at least one valid LLM provider API key is configured."""
@@ -114,48 +113,54 @@ class LLMService:
     # CORE COMPLETION METHODS
     # =========================================================================
 
-    def generate_completion_sync(self, system_prompt: str, user_prompt: str, temperature: float = 0.3) -> str:
-        """
-        Executes a prompt synchronously against the active LLM provider with fallback handling.
-        """
+    def generate_completion_sync(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        temperature: float = 0.3,
+    ) -> str:
+        """Generate text using the configured LLM provider without fallback."""
         provider = self.active_provider
 
-        # 1. Google Gemini
-        if "gemini" not in self._unreachable_providers and (provider == "gemini" or (self.gemini_key and not self.gemini_key.startswith("your-"))):
-            try:
+
+        try:
+            if provider == "gemini":
+                if not self.gemini_key or self.gemini_key.startswith("your-"):
+                    raise RuntimeError("Gemini API key is missing or invalid.")
                 result = self._call_gemini(system_prompt, user_prompt, temperature)
-                if result:
-                    return result
-            except Exception as e:
-                if any(k in str(e).lower() for k in ["getaddrinfo", "connecterror", "connection error", "timeout"]):
-                    self._unreachable_providers.add("gemini")
-                logger.error(f"[LLMService] Gemini execution failed: {e}. Attempting fallback.")
 
-        # 2. OpenAI GPT
-        if "openai" not in self._unreachable_providers and (provider == "openai" or (self.openai_key and not self.openai_key.startswith("your-"))):
-            try:
+            elif provider == "openai":
+                if not self.openai_key or self.openai_key.startswith("your-"):
+                    raise RuntimeError("OpenAI API key is missing or invalid.")
                 result = self._call_openai(system_prompt, user_prompt, temperature)
-                if result:
-                    return result
-            except Exception as e:
-                if any(k in str(e).lower() for k in ["getaddrinfo", "connecterror", "connection error", "timeout"]):
-                    self._unreachable_providers.add("openai")
-                logger.error(f"[LLMService] OpenAI execution failed: {e}. Attempting fallback.")
 
-        # 3. Groq
-        if "groq" not in self._unreachable_providers and (provider == "groq" or (self.groq_key and not self.groq_key.startswith("your-"))):
-            try:
+            elif provider == "groq":
+                if not self.groq_key or self.groq_key.startswith("your-"):
+                    raise RuntimeError("Groq API key is missing or invalid.")
                 result = self._call_groq(system_prompt, user_prompt, temperature)
-                if result:
-                    return result
-            except Exception as e:
-                if any(k in str(e).lower() for k in ["getaddrinfo", "connecterror", "connection error", "timeout"]):
-                    self._unreachable_providers.add("groq")
-                logger.error(f"[LLMService] Groq execution failed: {e}. Attempting fallback.")
 
-        # 4. Deterministic Heuristic Fallback
-        logger.info(f"[LLMService] Using heuristic text generation fallback for: '{user_prompt[:50]}...'")
-        return self._heuristic_completion(system_prompt, user_prompt)
+            else:
+                raise RuntimeError(
+                    f"No valid LLM provider configured. Active provider: {provider}"
+                )
+
+
+            if not result or not str(result).strip():
+                raise RuntimeError(f"{provider} returned an empty response.")
+
+
+            return str(result).strip()
+
+
+        except RuntimeError:
+            raise
+        except Exception as exc:
+            logger.exception("[LLMService] %s API call failed.", provider)
+            raise RuntimeError(
+                f"{provider} request failed. Please try again later."
+            ) from exc
+
+
 
     async def generate_completion(self, system_prompt: str, user_prompt: str, temperature: float = 0.3) -> str:
         """Executes a prompt asynchronously against the active LLM provider with fallback handling."""
@@ -166,30 +171,47 @@ class LLMService:
         return self.generate_completion_sync(system_prompt, user_prompt, temperature)
 
     def generate_structured_json_sync(
-        self,
-        system_prompt: str,
-        user_prompt: str,
-        temperature: float = 0.2,
+    self,
+    system_prompt: str,
+    user_prompt: str,
+    temperature: float = 0.2,
     ) -> Dict[str, Any]:
         """
-        Executes a prompt requesting structured JSON output synchronously and parses the response.
+        Generates structured JSON using the configured LLM provider.
+
+        Raises an error if the LLM fails or returns invalid JSON.
+        No heuristic JSON is returned.
         """
         json_instruction = (
-            "\n\nCRITICAL: You MUST respond ONLY with a valid JSON object matching the requested fields. "
-            "Do not include any preamble, conversational commentary, or markdown text outside of the JSON."
+            "\n\nCRITICAL: You MUST respond ONLY with a valid JSON object "
+            "matching the requested fields. Do not include any preamble, "
+            "conversational commentary, or markdown text outside of the JSON."
         )
+
         combined_system = f"{system_prompt}{json_instruction}"
 
-        try:
-            raw_response = self.generate_completion_sync(combined_system, user_prompt, temperature=temperature)
-            parsed = self._parse_json(str(raw_response))
-            if parsed and isinstance(parsed, dict) and len(parsed) > 0:
-                return parsed
-        except Exception as e:
-            logger.warning(f"[LLMService] Structured JSON generation error: {e}. Falling back to heuristic JSON.")
+        raw_response = self.generate_completion_sync(
+            combined_system,
+            user_prompt,
+            temperature=temperature,
+        )
 
-        # Fallback to structured heuristic dictionary
-        return self._heuristic_structured_json(system_prompt, user_prompt)
+        try:
+            parsed = self._parse_json(str(raw_response))
+
+            if isinstance(parsed, dict) and parsed:
+                return parsed
+
+            raise ValueError("LLM returned empty or invalid JSON.")
+
+        except Exception as e:
+            logger.error(
+                f"[LLMService] Structured JSON parsing failed: {e}"
+            )
+            raise RuntimeError(
+                "LLM returned an invalid structured response. "
+                "Please retry the request."
+            ) from e
 
     async def generate_structured_json(
         self,
@@ -531,8 +553,7 @@ class LLMService:
         logger.info(f"[LLMService] Extracting startup details from raw text (Length: {len(raw_idea)} chars)")
 
         if not self.is_configured():
-            logger.warning("[LLMService] No external LLM API key configured. Executing intelligent local extraction.")
-            return self._heuristic_extract(raw_idea)
+            raise RuntimeError("LLM service is not configured. Please check your API key.")
 
         system_prompt = (
             "You are a Senior Principal Venture Analyst. The user provides a raw startup idea description.\n"
@@ -551,15 +572,28 @@ class LLMService:
         )
 
         try:
-            raw_response = self.generate_completion_sync(system_prompt, raw_idea, temperature=0.2)
+            raw_response = self.generate_completion_sync(
+                system_prompt, raw_idea, temperature=0.2
+            )
             parsed = self._parse_json(raw_response)
-            if parsed and isinstance(parsed, dict) and "startup_name" in parsed:
-                logger.info(f"[LLMService] Successfully extracted startup: '{parsed.get('startup_name')}'")
-                return parsed
-        except Exception as e:
-            logger.error(f"[LLMService] Error during LLM idea extraction: {e}. Falling back to heuristic extraction.")
 
-        return self._heuristic_extract(raw_idea)
+            if isinstance(parsed, dict) and parsed.get("startup_name"):
+                logger.info(
+                    f"[LLMService] Successfully extracted startup: "
+                    f"'{parsed.get('startup_name')}'"
+                )
+                return parsed
+
+            raise ValueError("LLM returned incomplete startup details.")
+
+        except Exception as e:
+            logger.error(
+                f"[LLMService] Startup idea extraction failed: %s", e
+            )
+            raise RuntimeError(
+                "Failed to extract startup details using the LLM. "
+                "Please try again."
+            ) from e
 
     def synthesize_consulting_report(
         self,
@@ -585,8 +619,9 @@ class LLMService:
         ])
 
         if not self.is_configured():
-            logger.info("[LLMService] Using deterministic synthesis for consulting report.")
-            return self._heuristic_consulting_report(extracted_idea, search_snippets)
+            raise RuntimeError(
+                "LLM service is not configured. Please check your API key."
+            )
 
         system_prompt = (
             "You are a Senior Engagement Manager at a top-tier management consultancy (McKinsey / BCG / Deloitte).\n"
@@ -639,18 +674,37 @@ class LLMService:
         )
 
         try:
-            raw_response = self.generate_completion_sync(system_prompt, user_prompt, temperature=0.3)
+            raw_response = self.generate_completion_sync(
+                system_prompt, user_prompt, temperature=0.3
+            )
             parsed = self._parse_json(raw_response)
-            if parsed and isinstance(parsed, dict) and "overall_score" in parsed:
-                logger.info(f"[LLMService] Successfully generated LLM consulting report for '{title}'.")
-                return parsed
-        except Exception as e:
-            logger.error(f"[LLMService] LLM report synthesis failed: {e}. Falling back to deterministic synthesis.")
 
-        return self._heuristic_consulting_report(extracted_idea, search_snippets)
+            if isinstance(parsed, dict) and "overall_score" in parsed:
+                logger.info(
+                    "[LLMService] Successfully generated LLM consulting report for '%s'.",
+                    title,
+                )
+                return parsed
+
+
+            raise ValueError(
+                "LLM returned an invalid consulting report structure."
+            )
+
+
+        except Exception as exc:
+            logger.exception(
+                "[LLMService] Consulting report synthesis failed."
+            )
+            raise RuntimeError(
+                "Failed to generate the consulting report using the LLM. "
+                "Please try again."
+            ) from exc
+
+
 
     # =========================================================================
-    # HELPERS & HEURISTIC FALLBACKS
+    # HELPERS
     # =========================================================================
 
     def _parse_json(self, text: str) -> Optional[Dict[str, Any]]:

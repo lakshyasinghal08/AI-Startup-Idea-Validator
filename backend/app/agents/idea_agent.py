@@ -34,15 +34,26 @@ class IdeaAgent:
     def extract_idea(self, raw_idea: str) -> Dict[str, Any]:
         """Extract structured startup details from raw user input."""
         logger.info("[IdeaAgent] Extracting startup information via LLM")
-        return self.llm_service.extract_startup_details(raw_idea)
+
+        result = self.llm_service.extract_startup_details(raw_idea)
+
+        if not isinstance(result, dict):
+            raise RuntimeError(
+                "Startup idea extraction failed because the LLM "
+                "returned an invalid response."
+            )
+
+        return result
 
     @staticmethod
     def _normalize_score(value: Any) -> Optional[float]:
         """Convert a valid score to a number between 0 and 100."""
         try:
             score = float(value)
+
             if 0 <= score <= 100:
                 return round(score, 2)
+
         except (TypeError, ValueError):
             pass
 
@@ -52,7 +63,8 @@ class IdeaAgent:
         """
         Evaluate a startup idea using LLM-generated structured feedback.
 
-        Scores are generated dynamically based on the supplied startup details.
+        Invalid or incomplete AI evaluations raise an error instead of
+        returning incomplete or misleading results.
         """
         logger.info(
             "[IdeaAgent] Generating AI-based startup evaluation for '%s'",
@@ -112,7 +124,7 @@ startup assumptions. Explain weaknesses and provide actionable recommendations.
             )
 
             if not isinstance(result, dict):
-                raise ValueError("LLM returned an invalid evaluation format")
+                raise ValueError("LLM returned an invalid evaluation format.")
 
             score_fields = [
                 "feasibility_score",
@@ -128,24 +140,49 @@ startup assumptions. Explain weaknesses and provide actionable recommendations.
             }
 
             missing_scores = [
-                field for field, value in normalized_scores.items()
+                field
+                for field, value in normalized_scores.items()
                 if value is None
             ]
 
             if missing_scores:
-                logger.warning(
-                    "[IdeaAgent] Missing or invalid evaluation scores: %s",
-                    missing_scores,
+                raise ValueError(
+                    "LLM returned missing or invalid scores: "
+                    + ", ".join(missing_scores)
                 )
 
+            required_text_fields = ["problem_solution_fit"]
+
+            for field in required_text_fields:
+                if not isinstance(result.get(field), str) or not result[field].strip():
+                    raise ValueError(
+                        f"LLM returned a missing or invalid '{field}' field."
+                    )
+
+            list_fields = [
+                "strengths",
+                "weaknesses",
+                "recommendations",
+            ]
+
+            for field in list_fields:
+                if (
+                    not isinstance(result.get(field), list)
+                    or not all(
+                        isinstance(item, str) and item.strip()
+                        for item in result[field]
+                    )
+                ):
+                    raise ValueError(
+                        f"LLM returned an invalid '{field}' field."
+                    )
+
             evaluation = {
-                "problem_solution_fit": str(
-                    result.get("problem_solution_fit", "")
-                ),
+                "problem_solution_fit": result["problem_solution_fit"],
                 **normalized_scores,
-                "strengths": result.get("strengths", []),
-                "weaknesses": result.get("weaknesses", []),
-                "recommendations": result.get("recommendations", []),
+                "strengths": result["strengths"],
+                "weaknesses": result["weaknesses"],
+                "recommendations": result["recommendations"],
             }
 
             return evaluation
@@ -153,20 +190,10 @@ startup assumptions. Explain weaknesses and provide actionable recommendations.
         except Exception as exc:
             logger.exception("[IdeaAgent] AI evaluation failed: %s", exc)
 
-            return {
-                "problem_solution_fit": (
-                    "AI evaluation could not be completed. "
-                    "Please retry when the LLM service is available."
-                ),
-                "feasibility_score": None,
-                "uniqueness_score": None,
-                "problem_clarity_score": None,
-                "market_potential_score": None,
-                "solution_defensibility_score": None,
-                "strengths": [],
-                "weaknesses": [],
-                "recommendations": [],
-            }
+            raise RuntimeError(
+                "Startup idea evaluation failed because the LLM service "
+                "could not complete a valid evaluation. Please try again."
+            ) from exc
 
     def execute_sync(
         self, idea_data: Union[Dict[str, Any], str]
@@ -189,9 +216,7 @@ startup assumptions. Explain weaknesses and provide actionable recommendations.
                 idea_data.get("target_market") or idea_data.get("industry")
             )
 
-            combined_prompt = (
-                f"{title}: {desc}" if title else desc
-            )
+            combined_prompt = f"{title}: {desc}" if title else desc
             extracted = self.extract_idea(combined_prompt)
 
         # Merge AI-extracted details with explicit user inputs.
