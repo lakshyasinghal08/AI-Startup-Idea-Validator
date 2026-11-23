@@ -11,14 +11,15 @@ Supported Providers (in priority order):
     3. Groq (llama-3.3-70b-versatile / llama-3.1-8b-instant).
 """
 
+import asyncio
 import json
 import os
 import re
 import sys
 import time
 import warnings
-from typing import Any
-
+from typing import Any, List, Optional,Union 
+from typing import Dict
 import httpx
 
 _current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -30,17 +31,16 @@ if _backend_dir not in sys.path:
 from app.core.config import settings
 from app.core.logging import logger
 
+
 # Safe SDK Imports
-genai: Any = None
-genai_types: Any = None
 try:
     from google import genai
     from google.genai import types as genai_types
     HAS_GOOGLE_GENAI = True
 except ImportError:
     HAS_GOOGLE_GENAI = False
+    genai_types = None
 
-legacy_genai: Any = None
 with warnings.catch_warnings():
     warnings.simplefilter("ignore", category=FutureWarning)
     try:
@@ -49,26 +49,17 @@ with warnings.catch_warnings():
     except ImportError:
         HAS_LEGACY_GENAI = False
 
-OpenAI: Any = None
 try:
-    from openai import OpenAI
+    from openai import OpenAI, AsyncOpenAI
     HAS_OPENAI = True
 except ImportError:
     HAS_OPENAI = False
 
-Groq: Any = None
 try:
     from groq import Groq
     HAS_GROQ = True
 except ImportError:
     HAS_GROQ = False
-
-
-class LLMConfigurationError(Exception):
-    """Raised when the required LLM API key is not configured."""
-    def __init__(self, key_name: str = "GEMINI_API_KEY"):
-        self.key_name = key_name
-        super().__init__(f"{key_name} not configured.")
 
 
 class LLMService:
@@ -77,7 +68,7 @@ class LLMService:
     and consulting report synthesis with multi-provider failover and retry handling.
     """
 
-    def __init__(self, provider: str | None = None):
+    def __init__(self, provider: Optional[str] = None):
         self.provider = (provider or settings.DEFAULT_LLM_PROVIDER or "auto").lower()
         self.gemini_key = (settings.GEMINI_API_KEY or "").strip()
         self.openai_key = (settings.OPENAI_API_KEY or "").strip()
@@ -90,42 +81,21 @@ class LLMService:
 
     def _resolve_provider(self) -> str:
         """Determines which provider to use based on configuration and available API keys."""
-        if self.provider == "groq":
-            if self.groq_key and not self.groq_key.startswith("your-"):
-                return "groq"
-            return "missing_key"
-        elif self.provider == "gemini":
-            if self.gemini_key and not self.gemini_key.startswith("your-"):
-                return "gemini"
-            return "missing_key"
-        elif self.provider == "openai":
-            if self.openai_key and not self.openai_key.startswith("your-"):
-                return "openai"
-            return "missing_key"
+        if self.provider != "auto":
+            return self.provider
 
-        if self.groq_key and not self.groq_key.startswith("your-"):
-            return "groq"
         if self.gemini_key and not self.gemini_key.startswith("your-"):
             return "gemini"
         if self.openai_key and not self.openai_key.startswith("your-"):
             return "openai"
+        if self.groq_key and not self.groq_key.startswith("your-"):
+            return "groq"
 
         return "unconfigured"
 
     def is_configured(self) -> bool:
         """Returns True if at least one valid LLM provider API key is configured."""
-        return self._resolve_provider() in ("gemini", "openai", "groq")
-
-    def get_missing_key_name(self) -> str:
-        """Returns the specific API key variable name that is missing."""
-        prov = (self.provider or "auto").lower()
-        if prov == "groq":
-            return "GROQ_API_KEY"
-        elif prov == "openai":
-            return "OPENAI_API_KEY"
-        elif prov == "gemini":
-            return "GEMINI_API_KEY"
-        return "GEMINI_API_KEY"
+        return self.active_provider in ("gemini", "openai", "groq")
 
     # =========================================================================
     # RETRY LOGIC FOR TRANSIENT API FAILURES
@@ -249,7 +219,7 @@ class LLMService:
         system_prompt: str,
         user_prompt: str,
         temperature: float = 0.2,
-    ) -> dict[str, Any]:
+    ) -> Dict[str, Any]:
         """Executes a prompt requesting structured JSON output asynchronously and parses the response."""
         return self.generate_structured_json_sync(system_prompt, user_prompt, temperature)
 
@@ -258,7 +228,7 @@ class LLMService:
         system_prompt: str,
         user_prompt: str,
         temperature: float = 0.2,
-    ) -> dict[str, Any]:
+    ) -> Dict[str, Any]:
         """Async alias for structured JSON generation."""
         return self.generate_structured_json_sync(system_prompt, user_prompt, temperature)
 
@@ -283,7 +253,7 @@ class LLMService:
 
     def _heuristic_structured_json(
         self, system_prompt: str, user_prompt: str
-    ) -> dict[str, Any]:
+    ) -> Dict[str, Any]:
         """Generates structured heuristic output when LLM providers are unavailable."""
 
         prompt_lower = user_prompt.lower()
@@ -446,35 +416,24 @@ class LLMService:
         for attempt in range(max_attempts):
             try:
                 # Try official google.genai SDK
-                if HAS_GOOGLE_GENAI and genai is not None:
+                if HAS_GOOGLE_GENAI:
                     client = genai.Client(api_key=self.gemini_key)
-                    if genai_types and hasattr(genai_types, "GenerateContentConfig"):
-                        config = genai_types.GenerateContentConfig(
-                            system_instruction=system_prompt,
-                            temperature=temperature,
-                        )
-                        response = client.models.generate_content(
-                            model="gemini-2.0-flash",
-                            contents=user_prompt,
-                            config=config,
-                        )
-                    else:
-                        response = client.models.generate_content(
-                            model="gemini-2.0-flash",
-                            contents=user_prompt,
-                        )
+                    config = genai_types.GenerateContentConfig(
+                        system_instruction=system_prompt,
+                        temperature=temperature,
+                    ) if genai_types else {"temperature": temperature}
+                    response = client.models.generate_content(
+                        model="gemini-3.8-flash",
+                        contents=user_prompt,
+                        config=config,
+                    )
                     if response and response.text:
                         return response.text
 
                 # Try legacy google.generativeai
-                if (
-                    HAS_LEGACY_GENAI
-                    and legacy_genai is not None
-                    and hasattr(legacy_genai, "configure")
-                    and hasattr(legacy_genai, "GenerativeModel")
-                ):
+                if HAS_LEGACY_GENAI:
                     legacy_genai.configure(api_key=self.gemini_key)
-                    model = legacy_genai.GenerativeModel("gemini-1.5-flash")
+                    model = legacy_genai.GenerativeModel("gemini-3.5-flash-lite")
                     response = model.generate_content(
                         combined_prompt,
                         generation_config={"temperature": temperature},
@@ -483,8 +442,8 @@ class LLMService:
                         return response.text
 
                 # Direct REST API fallback
-                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={self.gemini_key}"
-                with httpx.Client(timeout=httpx.Timeout(10.0, connect=3.0)) as client:
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key={self.gemini_key}"
+                with httpx.Client(timeout=httpx.Timeout(4.0, connect=1.5)) as client:
                     resp = client.post(
                         url,
                         json={
@@ -509,12 +468,11 @@ class LLMService:
                     time.sleep(wait_time)
                 else:
                     raise
-        return ""
 
     def _call_openai(self, system_prompt: str, user_prompt: str, temperature: float) -> str:
         """Calls OpenAI GPT models via official SDK or REST."""
-        if HAS_OPENAI and OpenAI is not None:
-            client = OpenAI(api_key=self.openai_key, timeout=10.0, max_retries=0)
+        if HAS_OPENAI:
+            client = OpenAI(api_key=self.openai_key, timeout=httpx.Timeout(4.0, connect=1.5), max_retries=0)
             response = client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[
@@ -526,7 +484,7 @@ class LLMService:
             return response.choices[0].message.content or ""
 
         # Direct REST API fallback
-        with httpx.Client(timeout=httpx.Timeout(10.0, connect=3.0)) as client:
+        with httpx.Client(timeout=httpx.Timeout(4.0, connect=1.5)) as client:
             resp = client.post(
                 "https://api.openai.com/v1/chat/completions",
                 headers={"Authorization": f"Bearer {self.openai_key}"},
@@ -545,61 +503,43 @@ class LLMService:
             raise RuntimeError(f"OpenAI REST API error {resp.status_code}: {resp.text}")
 
     def _call_groq(self, system_prompt: str, user_prompt: str, temperature: float) -> str:
-        """Calls Groq API via official SDK or REST with model fallback."""
-        candidate_models = [
-            "openai/gpt-oss-120b",
-            "qwen/qwen3.8-27b",
-            "llama-3.3-70b-versatile",
-            "llama-3.1-8b-instant",
-        ]
-        last_error = None
+        """Calls Groq API via official SDK or REST."""
+        if HAS_GROQ:
+            client = Groq(api_key=self.groq_key, timeout=httpx.Timeout(4.0, connect=1.5), max_retries=0)
+            response = client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                temperature=temperature,
+            )
+            return response.choices[0].message.content or ""
 
-        for model_name in candidate_models:
-            try:
-                if HAS_GROQ and Groq is not None:
-                    client = Groq(api_key=self.groq_key, timeout=30.0, max_retries=1)
-                    response = client.chat.completions.create(
-                        model=model_name,
-                        messages=[
-                            {"role": "system", "content": system_prompt},
-                            {"role": "user", "content": user_prompt},
-                        ],
-                        temperature=temperature,
-                    )
-                    content = response.choices[0].message.content or ""
-                    if content.strip():
-                        return content
-                else:
-                    with httpx.Client(timeout=httpx.Timeout(30.0, connect=5.0)) as client:
-                        resp = client.post(
-                            "https://api.groq.com/openai/v1/chat/completions",
-                            headers={"Authorization": f"Bearer {self.groq_key}"},
-                            json={
-                                "model": model_name,
-                                "messages": [
-                                    {"role": "system", "content": system_prompt},
-                                    {"role": "user", "content": user_prompt},
-                                ],
-                                "temperature": temperature,
-                            },
-                        )
-                        if resp.status_code == 200:
-                            data = resp.json()
-                            content = data["choices"][0]["message"]["content"]
-                            if content.strip():
-                                return content
-                        last_error = RuntimeError(f"Groq REST API error {resp.status_code}: {resp.text}")
-            except Exception as exc:  # noqa: BLE001
-                last_error = exc
-                logger.warning(f"[LLMService] Groq model '{model_name}' failed: {exc}. Trying next candidate.")
-
-        raise last_error or RuntimeError("All Groq models failed.")
+        # Direct REST API fallback
+        with httpx.Client(timeout=httpx.Timeout(4.0, connect=1.5)) as client:
+            resp = client.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {self.groq_key}"},
+                json={
+                    "model": "llama-3.3-70b-versatile",
+                    "messages": [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt},
+                    ],
+                    "temperature": temperature,
+                },
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                return data["choices"][0]["message"]["content"]
+            raise RuntimeError(f"Groq REST API error {resp.status_code}: {resp.text}")
 
     # =========================================================================
     # STRUCTURED EXTRACTION & AGENT METHODS
     # =========================================================================
 
-    def extract_startup_details(self, raw_idea: str) -> dict[str, Any]:
+    def extract_startup_details(self, raw_idea: str) -> Dict[str, Any]:
         """
         Extracts structured startup attributes from raw user text:
         - Startup Name
@@ -658,9 +598,9 @@ class LLMService:
 
     def synthesize_consulting_report(
         self,
-        extracted_idea: dict[str, Any],
-        search_snippets: list[dict[str, Any]],
-    ) -> dict[str, Any]:
+        extracted_idea: Dict[str, Any],
+        search_snippets: List[Dict[str, Any]],
+    ) -> Dict[str, Any]:
         """
         Synthesizes a complete McKinsey/BCG/Deloitte style consulting report
         based on the extracted idea and real-time Tavily search snippets.
@@ -768,7 +708,7 @@ class LLMService:
     # HELPERS
     # =========================================================================
 
-    def _parse_json(self, text: str) -> dict[str, Any] | None:
+    def _parse_json(self, text: str) -> Optional[Dict[str, Any]]:
         """Cleans and extracts JSON payload from raw LLM output."""
         if not text:
             return None
@@ -784,11 +724,11 @@ class LLMService:
 
         try:
             return json.loads(cleaned)
-        except Exception as err:  # noqa: BLE001
+        except Exception as err:
             logger.warning(f"[LLMService] JSON parse failed: {err}. Raw text:\n{text[:200]}")
             return None
 
-    def _heuristic_extract(self, text: str) -> dict[str, Any]:
+    def _heuristic_extract(self, text: str) -> Dict[str, Any]:
         """Provides an intelligent heuristic extraction when LLM is unavailable."""
         sentences = [s.strip() for s in re.split(r"[.!?\n]", text) if len(s.strip()) > 5]
         first_sentence = sentences[0] if sentences else text[:80]
@@ -841,9 +781,9 @@ class LLMService:
 
     def _heuristic_consulting_report(
         self,
-        extracted_idea: dict[str, Any],
-        search_snippets: list[dict[str, Any]],
-    ) -> dict[str, Any]:
+        extracted_idea: Dict[str, Any],
+        search_snippets: List[Dict[str, Any]],
+    ) -> Dict[str, Any]:
         """
         Synthesizes structured consulting content deterministically,
         grounded in actual search snippets when available.
