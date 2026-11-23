@@ -3,6 +3,12 @@ Market Search API Route
 =======================
 Exposes live web search and market research endpoints powered by
 the Tavily Search API.
+Purpose:
+    Exposes web search and market research endpoints powered by Tavily Search API.
+    Enables live competitor discovery and market sentiment exploration.
+
+Milestone Notes:
+    - Milestone 1: Live Tavily API integration with structured search results and fallback resilience.
 """
 
 import os
@@ -14,15 +20,14 @@ _backend_dir = os.path.abspath(os.path.join(_current_dir, "../../.."))
 if _backend_dir not in sys.path:
     sys.path.insert(0, _backend_dir)
 
-from fastapi import APIRouter, HTTPException, status
-
-from app.schemas.response_schema import ApiResponse
+from app.core.logging import logger
 from app.schemas.idea_schema import (
     MarketSearchRequest,
     MarketSearchResponse,
     MarketSearchResultItem,
 )
 from app.services.tavily_service import (
+    TavilyConfigurationError,
     TavilySearchError,
     TavilyConfigurationError,
     tavily_service,

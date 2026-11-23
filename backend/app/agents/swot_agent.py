@@ -8,7 +8,7 @@ Purpose:
 
 import os
 import sys
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 # Ensure backend root directory is in sys.path
 _current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -16,8 +16,8 @@ _backend_dir = os.path.abspath(os.path.join(_current_dir, "../.."))
 if _backend_dir not in sys.path:
     sys.path.insert(0, _backend_dir)
 
-from app.services.llm_service import LLMService, llm_service
 from app.core.logging import logger
+from app.services.llm_service import LLMService, llm_service
 
 
 class SWOTAgent:
@@ -25,15 +25,15 @@ class SWOTAgent:
     Agent responsible for synthesizing internal advantages and external threats into SWOT.
     """
 
-    def __init__(self, service: Optional[LLMService] = None):
+    def __init__(self, service: LLMService | None = None):
         self.llm_service = service or llm_service
 
     def execute(
         self,
-        extracted_idea: Dict[str, Any],
-        market_data: Dict[str, Any],
-        competitor_data: Dict[str, Any],
-    ) -> Dict[str, List[str]]:
+        extracted_idea: dict[str, Any],
+        market_data: dict[str, Any],
+        competitor_data: dict[str, Any],
+    ) -> dict[str, list[str]]:
         """
         Compiles the 4-quadrant SWOT matrix.
         """

@@ -10,7 +10,6 @@ Milestone Notes:
     - Future Milestones: Integrate database connection pooling and OAuth2 secret keys.
 """
 
-from typing import List, Optional
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -42,8 +41,8 @@ class Settings(BaseSettings):
         description="API key for Groq models (Llama 3.3)",
     )
     DEFAULT_LLM_PROVIDER: str = Field(
-        default="auto",
-        description="LLM provider: 'auto', 'gemini', 'openai', or 'groq'",
+        default="groq",
+        description="LLM provider: 'groq', 'gemini', 'openai', or 'auto'",
     )
 
     # Real-Time Web Search API
@@ -73,7 +72,7 @@ class Settings(BaseSettings):
         """Alias for backward compatibility with router prefixing."""
         return self.API_PREFIX
 
-    def get_cors_origins(self) -> List[str]:
+    def get_cors_origins(self) -> list[str]:
         """
         Builds the list of allowed CORS origins including the configured
         FRONTEND_URL and standard local development ports.

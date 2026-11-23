@@ -13,6 +13,7 @@ Infosys Springboard Virtual Internship 7.0 - Milestone 1
 import os
 import sys
 import unittest
+from unittest.mock import patch
 
 # Ensure backend root directory is in sys.path
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -20,16 +21,17 @@ BACKEND_DIR = os.path.dirname(CURRENT_DIR)
 if BACKEND_DIR not in sys.path:
     sys.path.insert(0, BACKEND_DIR)
 
-from app.main import app
 from app.api.routes.health import check_health
-from app.api.routes.idea import validate_idea, get_idea_validation
+from app.api.routes.idea import get_idea_validation, validate_idea
 from app.api.routes.search import search_market
+from app.main import app
 from app.schemas.idea_schema import (
     IdeaCreateRequest,
     IdeaValidationResponse,
     MarketSearchRequest,
     MarketSearchResponse,
 )
+from fastapi import HTTPException
 
 
 def _extract_paths(fastapi_app):
@@ -37,6 +39,26 @@ def _extract_paths(fastapi_app):
     paths = {route.path for route in fastapi_app.routes if hasattr(route, "path")}
     paths.update(fastapi_app.openapi().get("paths", {}).keys())
     return list(paths)
+
+
+MOCK_EXTRACTED_IDEA = {
+    "startup_name": "CleanRoute AI",
+    "industry": "Logistics & Fleet Operations",
+    "problem_statement": "Green fleet management using AI routing to reduce carbon footprint for freight.",
+    "proposed_solution": "Autonomous IoT cold chain temperature tracking and route optimization.",
+    "target_customers": "Freight Dispatchers",
+    "business_model": "Monthly SaaS Subscription",
+    "value_proposition": "Automated route optimization reducing fuel usage by 20%.",
+}
+
+MOCK_SEARCH_RESULTS = [
+    {
+        "title": "CleanRoute Overview",
+        "url": "https://example.com/cleanroute",
+        "content": "CleanRoute provides automated freight route optimization.",
+        "score": 0.92,
+    }
+]
 
 
 class TestHealthAndRoutes(unittest.TestCase):
@@ -54,7 +76,9 @@ class TestHealthAndRoutes(unittest.TestCase):
         self.assertIn("version", result)
         self.assertIn("timestamp", result)
 
-    def test_idea_validation_controller(self):
+    @patch("app.api.routes.idea.idea_agent.extract_idea", return_value=MOCK_EXTRACTED_IDEA)
+    @patch("app.api.routes.idea.search_agent.execute", return_value=MOCK_SEARCH_RESULTS)
+    def test_idea_validation_controller(self, mock_search, mock_extract):
         """Verify POST /api/v1/idea/validate processes valid payload and returns structured SWOT."""
         request_payload = IdeaCreateRequest(
             title="CleanRoute AI",
@@ -68,6 +92,7 @@ class TestHealthAndRoutes(unittest.TestCase):
 
         self.assertTrue(response.success)
         self.assertIsInstance(response.data, IdeaValidationResponse)
+        assert response.data is not None
         self.assertEqual(response.data.title, "CleanRoute AI")
         self.assertEqual(response.data.status, "completed")
         self.assertGreater(response.data.scores.overall, 0.0)
@@ -77,7 +102,9 @@ class TestHealthAndRoutes(unittest.TestCase):
         self.assertGreater(len(response.data.swot.threats), 0)
         self.assertIn("tam", response.data.market_sizing)
 
-    def test_single_input_idea_validation(self):
+    @patch("app.api.routes.idea.idea_agent.extract_idea", return_value=MOCK_EXTRACTED_IDEA)
+    @patch("app.api.routes.idea.search_agent.execute", return_value=MOCK_SEARCH_RESULTS)
+    def test_single_input_idea_validation(self, mock_search, mock_extract):
         """Verify POST /api/v1/idea/validate processes single raw text input."""
         payload = IdeaCreateRequest(
             idea="I want to build an AI platform that helps students prepare for interviews."
@@ -86,6 +113,7 @@ class TestHealthAndRoutes(unittest.TestCase):
 
         self.assertTrue(response.success)
         self.assertIsInstance(response.data, IdeaValidationResponse)
+        assert response.data is not None
         self.assertEqual(response.data.status, "completed")
         self.assertGreater(response.data.overall_validation_score, 0.0)
         self.assertIsNotNone(response.data.executive_summary)
@@ -98,11 +126,21 @@ class TestHealthAndRoutes(unittest.TestCase):
 
         self.assertTrue(response.success)
         self.assertIsInstance(response.data, IdeaValidationResponse)
+        assert response.data is not None
         self.assertEqual(response.data.id, test_id)
         self.assertIsNotNone(response.data.scores)
 
-    def test_market_search_controller(self):
+    @patch("app.api.routes.search.tavily_service.search")
+    def test_market_search_controller(self, mock_search):
         """Verify POST /api/v1/search/market executes market query and returns result items."""
+        mock_search.return_value = [
+            {
+                "title": "Autonomous logistics overview",
+                "url": "https://example.com/logistics",
+                "content": "Autonomous freight optimization is expanding rapidly.",
+                "score": 0.95,
+            }
+        ]
         search_payload = MarketSearchRequest(
             query="Autonomous logistics freight optimization",
             max_results=3,
@@ -111,11 +149,30 @@ class TestHealthAndRoutes(unittest.TestCase):
 
         self.assertTrue(response.success)
         self.assertIsInstance(response.data, MarketSearchResponse)
+        assert response.data is not None
         self.assertEqual(response.data.query, "Autonomous logistics freight optimization")
         self.assertGreaterEqual(response.data.total_results, 1)
         self.assertGreaterEqual(len(response.data.results), 1)
-        self.assertIsNotNone(response.data.results[0].title)
-        self.assertIsNotNone(response.data.results[0].url)
+        self.assertEqual(response.data.results[0].title, "Autonomous logistics overview")
+        self.assertEqual(response.data.results[0].url, "https://example.com/logistics")
+
+    def test_market_search_missing_key_error(self):
+        """Verify POST /api/v1/search/market raises 400 error when TAVILY_API_KEY is not configured."""
+        with patch("app.api.routes.search.tavily_service.is_configured", return_value=False):
+            search_payload = MarketSearchRequest(query="AI startups")
+            with self.assertRaises(HTTPException) as ctx:
+                search_market(search_payload)
+            self.assertEqual(ctx.exception.status_code, 400)
+            self.assertIn("TAVILY_API_KEY not configured", str(ctx.exception.detail))
+
+    def test_idea_validate_missing_key_error(self):
+        """Verify POST /api/v1/idea/validate raises 400 error when LLM API key is not configured."""
+        with patch("app.api.routes.idea.llm_service.is_configured", return_value=False):
+            payload = IdeaCreateRequest(idea="Test idea")
+            with self.assertRaises(HTTPException) as ctx:
+                validate_idea(payload)
+            self.assertEqual(ctx.exception.status_code, 400)
+            self.assertIn("not configured", str(ctx.exception.detail))
 
     def test_app_routes_registration(self):
         """Verify all required API endpoints are mounted on the FastAPI application."""
@@ -145,7 +202,9 @@ def test_pytest_health():
     assert "version" in data
 
 
-def test_pytest_idea_validation():
+@patch("app.api.routes.idea.idea_agent.extract_idea", return_value=MOCK_EXTRACTED_IDEA)
+@patch("app.api.routes.idea.search_agent.execute", return_value=MOCK_SEARCH_RESULTS)
+def test_pytest_idea_validation(mock_search, mock_extract):
     """Pytest hook for idea validation endpoint verification."""
     payload = IdeaCreateRequest(
         title="EcoLogix Cargo",
@@ -154,6 +213,7 @@ def test_pytest_idea_validation():
     )
     res = validate_idea(payload)
     assert res.success is True
+    assert res.data is not None
     assert res.data.title == "EcoLogix Cargo"
     assert res.data.status == "completed"
 

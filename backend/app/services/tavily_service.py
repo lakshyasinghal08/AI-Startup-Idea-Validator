@@ -9,7 +9,7 @@ Purpose:
 
 import os
 import sys
-from typing import Any, Dict, List
+from typing import Any
 from urllib.parse import urlparse
 
 import httpx
@@ -53,7 +53,7 @@ class TavilySearchService:
     def _validate_results(
         self,
         results: Any
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Validate and normalize genuine Tavily results."""
 
         if not isinstance(results, list):
@@ -70,21 +70,23 @@ class TavilySearchService:
             title = item.get("title")
             url = item.get("url")
             content = item.get("content")
-            score = item.get("score")
+            raw_score = item.get("score")
 
-            if not all(
-                isinstance(value, str) and value.strip()
-                for value in (title, url, content)
-            ):
+            if not isinstance(title, str) or not title.strip():
+                continue
+            if not isinstance(url, str) or not url.strip():
+                continue
+            if not isinstance(content, str) or not content.strip():
                 continue
 
             parsed_url = urlparse(url)
-
             if parsed_url.scheme not in ("http", "https") or not parsed_url.netloc:
                 continue
 
+            if raw_score is None:
+                continue
             try:
-                score = float(score)
+                score_val = float(raw_score)
             except (TypeError, ValueError):
                 continue
 
@@ -92,7 +94,7 @@ class TavilySearchService:
                 "title": title.strip(),
                 "url": url.strip(),
                 "content": content.strip(),
-                "score": score,
+                "score": score_val,
             })
 
         return normalized_results
@@ -102,7 +104,7 @@ class TavilySearchService:
         query: str,
         search_depth: str = "advanced",
         max_results: int = 5
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Execute a live Tavily search.
 
@@ -125,7 +127,7 @@ class TavilySearchService:
 
         if not self.is_configured():
             raise TavilyConfigurationError(
-                "Tavily API key is missing or invalid."
+                "TAVILY_API_KEY not configured."
             )
 
         payload = {
@@ -139,7 +141,7 @@ class TavilySearchService:
         logger.info("[TavilyService] Starting live search.")
 
         try:
-            with httpx.Client(timeout=30.0) as client:
+            with httpx.Client(timeout=httpx.Timeout(10.0, connect=3.0)) as client:
                 response = client.post(
                     self.API_URL,
                     json=payload,

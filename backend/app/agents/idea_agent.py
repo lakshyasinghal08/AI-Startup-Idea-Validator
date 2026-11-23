@@ -9,7 +9,7 @@ Purpose:
 
 import os
 import sys
-from typing import Any, Dict, Optional, Union
+from typing import Any
 
 # Ensure backend root directory is in sys.path
 _current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -18,8 +18,8 @@ _backend_dir = os.path.abspath(os.path.join(_current_dir, "../.."))
 if _backend_dir not in sys.path:
     sys.path.insert(0, _backend_dir)
 
-from app.services.llm_service import LLMService, llm_service
 from app.core.logging import logger
+from app.services.llm_service import LLMService, llm_service
 
 
 class IdeaAgent:
@@ -28,10 +28,10 @@ class IdeaAgent:
     startup ideas using the configured LLM service.
     """
 
-    def __init__(self, service: Optional[LLMService] = None):
+    def __init__(self, service: LLMService | None = None):
         self.llm_service = service or llm_service
 
-    def extract_idea(self, raw_idea: str) -> Dict[str, Any]:
+    def extract_idea(self, raw_idea: str) -> dict[str, Any]:
         """Extract structured startup details from raw user input."""
         logger.info("[IdeaAgent] Extracting startup information via LLM")
 
@@ -46,7 +46,7 @@ class IdeaAgent:
         return result
 
     @staticmethod
-    def _normalize_score(value: Any) -> Optional[float]:
+    def _normalize_score(value: Any) -> float | None:
         """Convert a valid score to a number between 0 and 100."""
         try:
             score = float(value)
@@ -59,7 +59,7 @@ class IdeaAgent:
 
         return None
 
-    def evaluate(self, extracted_data: Dict[str, Any]) -> Dict[str, Any]:
+    def evaluate(self, extracted_data: dict[str, Any]) -> dict[str, Any]:
         """
         Evaluate a startup idea using LLM-generated structured feedback.
 
@@ -187,7 +187,7 @@ startup assumptions. Explain weaknesses and provide actionable recommendations.
 
             return evaluation
 
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             logger.exception("[IdeaAgent] AI evaluation failed: %s", exc)
 
             raise RuntimeError(
@@ -196,8 +196,8 @@ startup assumptions. Explain weaknesses and provide actionable recommendations.
             ) from exc
 
     def execute_sync(
-        self, idea_data: Union[Dict[str, Any], str]
-    ) -> Dict[str, Any]:
+        self, idea_data: dict[str, Any] | str
+    ) -> dict[str, Any]:
         """
         Synchronously extracts and evaluates a startup idea.
         Accepts raw text or structured user input.
@@ -250,14 +250,14 @@ startup assumptions. Explain weaknesses and provide actionable recommendations.
         }
 
     async def execute(
-        self, idea_data: Union[Dict[str, Any], str]
-    ) -> Dict[str, Any]:
+        self, idea_data: dict[str, Any] | str
+    ) -> dict[str, Any]:
         """Asynchronous execution wrapper."""
         return self.execute_sync(idea_data)
 
     async def aexecute(
-        self, idea_data: Union[Dict[str, Any], str]
-    ) -> Dict[str, Any]:
+        self, idea_data: dict[str, Any] | str
+    ) -> dict[str, Any]:
         """Async alias for execute()."""
         return self.execute_sync(idea_data)
 
