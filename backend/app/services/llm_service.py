@@ -21,7 +21,8 @@ import warnings
 from typing import Any, List, Optional,Union 
 from typing import Dict
 import httpx
-
+class LLMConfigurationError(RuntimeError):
+    """Raised when the LLM service is missing valid configuration."""
 _current_dir = os.path.dirname(os.path.abspath(__file__))
 _backend_dir = os.path.abspath(os.path.join(_current_dir, "../.."))
 
@@ -127,17 +128,17 @@ class LLMService:
         try:
             if provider == "gemini":
                 if not self.gemini_key or self.gemini_key.startswith("your-"):
-                    raise RuntimeError("Gemini API key is missing or invalid.")
+                    raise LLMConfigurationError("Gemini API key is missing or invalid.")
                 result = self._call_gemini(system_prompt, user_prompt, temperature)
 
             elif provider == "openai":
                 if not self.openai_key or self.openai_key.startswith("your-"):
-                    raise RuntimeError("OpenAI API key is missing or invalid.")
+                    raise LLMConfigurationError("OpenAI API key is missing or invalid.")
                 result = self._call_openai(system_prompt, user_prompt, temperature)
 
             elif provider == "groq":
                 if not self.groq_key or self.groq_key.startswith("your-"):
-                    raise RuntimeError("Groq API key is missing or invalid.")
+                    raise LLMConfigurationError("Groq API key is missing or invalid.")
                 result = self._call_groq(system_prompt, user_prompt, temperature)
 
             else:
