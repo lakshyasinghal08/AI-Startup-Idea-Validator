@@ -95,8 +95,25 @@ class LLMService:
         return "unconfigured"
 
     def is_configured(self) -> bool:
-        """Returns True if at least one valid LLM provider API key is configured."""
-        return self.active_provider in ("gemini", "openai", "groq")
+        """Returns True if the active LLM provider has a valid API key."""
+        if self.active_provider == "gemini":
+            return bool(self.gemini_key)
+        elif self.active_provider == "openai":
+            return bool(self.openai_key)
+        elif self.active_provider == "groq":
+            return bool(self.groq_key)
+        return False
+
+
+    def get_missing_key_name(self) -> str:
+        """Returns the environment variable name for the missing LLM API key."""
+        if self.active_provider == "gemini" and not self.gemini_key:
+            return "GEMINI_API_KEY"
+        elif self.active_provider == "openai" and not self.openai_key:
+            return "OPENAI_API_KEY"
+        elif self.active_provider == "groq" and not self.groq_key:
+            return "GROQ_API_KEY"
+        return "LLM_PROVIDER"
 
     # =========================================================================
     # RETRY LOGIC FOR TRANSIENT API FAILURES
