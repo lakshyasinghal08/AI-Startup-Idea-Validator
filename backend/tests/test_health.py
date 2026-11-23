@@ -76,9 +76,10 @@ class TestHealthAndRoutes(unittest.TestCase):
         self.assertIn("version", result)
         self.assertIn("timestamp", result)
 
+    @patch("app.api.routes.idea.llm_service.is_configured", return_value=True)
     @patch("app.api.routes.idea.idea_agent.extract_idea", return_value=MOCK_EXTRACTED_IDEA)
     @patch("app.api.routes.idea.search_agent.execute", return_value=MOCK_SEARCH_RESULTS)
-    def test_idea_validation_controller(self, mock_search, mock_extract):
+    def test_idea_validation_controller(self, mock_config,mock_extract,mock_search):
         """Verify POST /api/v1/idea/validate processes valid payload and returns structured SWOT."""
         request_payload = IdeaCreateRequest(
             title="CleanRoute AI",
@@ -104,7 +105,8 @@ class TestHealthAndRoutes(unittest.TestCase):
 
     @patch("app.api.routes.idea.idea_agent.extract_idea", return_value=MOCK_EXTRACTED_IDEA)
     @patch("app.api.routes.idea.search_agent.execute", return_value=MOCK_SEARCH_RESULTS)
-    def test_single_input_idea_validation(self, mock_search, mock_extract):
+    @patch("app.api.routes.idea.llm_service.is_configured", return_value=True)
+    def test_single_input_idea_validation(self, mock_config, mock_search, mock_extract):
         """Verify POST /api/v1/idea/validate processes single raw text input."""
         payload = IdeaCreateRequest(
             idea="I want to build an AI platform that helps students prepare for interviews."
@@ -201,10 +203,10 @@ def test_pytest_health():
     assert data["status"] == "healthy"
     assert "version" in data
 
-
 @patch("app.api.routes.idea.idea_agent.extract_idea", return_value=MOCK_EXTRACTED_IDEA)
 @patch("app.api.routes.idea.search_agent.execute", return_value=MOCK_SEARCH_RESULTS)
-def test_pytest_idea_validation(mock_search, mock_extract):
+@patch("app.api.routes.idea.llm_service.is_configured", return_value=True)
+def test_pytest_idea_validation(mock_config, mock_search, mock_extract):
     """Pytest hook for idea validation endpoint verification."""
     payload = IdeaCreateRequest(
         title="EcoLogix Cargo",
