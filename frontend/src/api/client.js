@@ -28,7 +28,12 @@ apiClient.interceptors.response.use(
   (response) => response.data,
   (error) => {
     const errorPayload = {
-      message: error.response?.data?.message || error.message || 'An unexpected error occurred',
+      message:
+        error.response?.data?.error ||
+        error.response?.data?.message ||
+        error.response?.data?.detail ||
+        error.message ||
+        'An unexpected error occurred',
       status: error.response?.status,
       errors: error.response?.data?.errors || null,
     };

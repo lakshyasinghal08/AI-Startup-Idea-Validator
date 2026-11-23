@@ -10,18 +10,18 @@ Contains specialized AI agents for multi-agent market validation:
 - ReportAgent: Executive report and validation dossier assembly.
 """
 
-from app.agents.search_agent import SearchAgent
+from app.agents.competitor_agent import CompetitorAgent
 from app.agents.idea_agent import IdeaAgent
 from app.agents.market_agent import MarketAgent
-from app.agents.competitor_agent import CompetitorAgent
-from app.agents.swot_agent import SWOTAgent
 from app.agents.report_agent import ReportAgent
+from app.agents.search_agent import SearchAgent
+from app.agents.swot_agent import SWOTAgent
 
 __all__ = [
-    "SearchAgent",
+    "CompetitorAgent",
     "IdeaAgent",
     "MarketAgent",
-    "CompetitorAgent",
-    "SWOTAgent",
     "ReportAgent",
+    "SWOTAgent",
+    "SearchAgent",
 ]

@@ -12,4 +12,4 @@ Milestone Notes:
 from app.models.idea import StartupIdea, ValidationReport
 from app.models.search_result import SearchResultCache
 
-__all__ = ["StartupIdea", "ValidationReport", "SearchResultCache"]
+__all__ = ["SearchResultCache", "StartupIdea", "ValidationReport"]

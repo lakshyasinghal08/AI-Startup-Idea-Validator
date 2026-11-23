@@ -11,10 +11,10 @@ Milestone Notes:
       and Alembic schema migrations.
 """
 
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
 import uuid
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from typing import Any
 
 
 @dataclass
@@ -29,14 +29,14 @@ class StartupIdea:
     description: str
     target_market: str
     id: str = field(default_factory=lambda: f"idea_{uuid.uuid4().hex[:8]}")
-    target_audience: Optional[str] = None
-    estimated_budget: Optional[str] = None
-    monetization_model: Optional[str] = None
+    target_audience: str | None = None
+    estimated_budget: str | None = None
+    monetization_model: str | None = None
     status: str = "PENDING"
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert entity to standard Python dictionary."""
         return {
             "id": self.id,
@@ -66,14 +66,14 @@ class ValidationReport:
     feasibility_score: float = 0.0
     market_score: float = 0.0
     uniqueness_score: float = 0.0
-    swot_analysis: Dict[str, List[str]] = field(default_factory=dict)
-    market_sizing: Dict[str, str] = field(default_factory=dict)
-    competitor_data: List[str] = field(default_factory=list)
-    summary: Optional[str] = None
-    pdf_report_path: Optional[str] = None
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    swot_analysis: dict[str, list[str]] = field(default_factory=dict)
+    market_sizing: dict[str, str] = field(default_factory=dict)
+    competitor_data: list[str] = field(default_factory=list)
+    summary: str | None = None
+    pdf_report_path: str | None = None
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert entity to standard Python dictionary."""
         return {
             "id": self.id,

@@ -20,22 +20,24 @@ _backend_dir = os.path.abspath(os.path.join(_current_dir, "../../.."))
 if _backend_dir not in sys.path:
     sys.path.insert(0, _backend_dir)
 
-from fastapi import APIRouter, HTTPException, status
-from app.schemas.response_schema import ApiResponse
+from app.agents.competitor_agent import competitor_agent
+from app.agents.idea_agent import idea_agent
+from app.agents.market_agent import market_agent
+from app.agents.report_agent import report_agent
+from app.agents.search_agent import search_agent
+from app.agents.swot_agent import swot_agent
+from app.core.logging import logger
 from app.schemas.idea_schema import (
     IdeaCreateRequest,
     IdeaValidationResponse,
-    ValidationScores,
     SWOTAnalysis,
+    ValidationScores,
 )
-from app.agents.idea_agent import idea_agent
-from app.agents.search_agent import search_agent
-from app.agents.market_agent import market_agent
-from app.agents.competitor_agent import competitor_agent
-from app.agents.swot_agent import swot_agent
-from app.agents.report_agent import report_agent
+from app.schemas.response_schema import ApiResponse
+from app.services.llm_service import LLMConfigurationError, llm_service
+from app.services.tavily_service import TavilyConfigurationError, tavily_service
 from app.utils.helpers import generate_short_id
-from app.core.logging import logger
+from fastapi import APIRouter, HTTPException, status
 
 router = APIRouter(prefix="/idea", tags=["Idea Validation"])
 
@@ -59,7 +61,28 @@ def validate_idea(payload: IdeaCreateRequest) -> ApiResponse[IdeaValidationRespo
       5. SWOTAgent: Builds 4-quadrant strategic matrix.
       6. ReportAgent: Synthesizes findings into 16 management consulting sections.
     """
+    if not llm_service.is_configured():
+        missing_key = llm_service.get_missing_key_name()
+        logger.error(f"[IdeaRoute] LLM API key '{missing_key}' is not configured.")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"{missing_key} not configured.",
+        )
+
+    if not tavily_service.is_configured():
+        logger.error("[IdeaRoute] TAVILY_API_KEY is not configured.")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="TAVILY_API_KEY not configured.",
+        )
+
     raw_idea = (payload.idea or payload.description or payload.title or "").strip()
+    if not raw_idea:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Idea text cannot be empty.",
+        )
+
     logger.info(f"[IdeaRoute] Starting multi-agent validation pipeline for idea: '{raw_idea[:80]}...'")
 
     generated_id = generate_short_id()
@@ -67,9 +90,17 @@ def validate_idea(payload: IdeaCreateRequest) -> ApiResponse[IdeaValidationRespo
     # Step 1: LLM Idea Extraction
     try:
         extracted = idea_agent.extract_idea(raw_idea)
-    except Exception as e:
-        logger.warning(f"[IdeaRoute] IdeaAgent extraction error: {e}. Using fallback extraction.")
-        extracted = {}
+    except LLMConfigurationError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+    except Exception as e:  # noqa: BLE001
+        logger.error(f"[IdeaRoute] IdeaAgent extraction error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"LLM idea extraction failed: {e!s}",
+        )
 
     # Overlay with explicit user fields if provided
     startup_name = payload.title if payload.title and payload.title != "Startup Idea" else extracted.get("startup_name", "Startup Venture")
@@ -93,28 +124,33 @@ def validate_idea(payload: IdeaCreateRequest) -> ApiResponse[IdeaValidationRespo
     # Step 2: Tavily Search Agent
     try:
         search_snippets = search_agent.execute(startup_name, industry, problem)
-    except Exception as e:
-        logger.warning(f"[IdeaRoute] SearchAgent execution error: {e}. Using fallback.")
+    except TavilyConfigurationError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="TAVILY_API_KEY not configured.",
+        )
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"[IdeaRoute] SearchAgent execution error: {e}")
         search_snippets = []
 
     # Step 3: Market Analysis Agent
     try:
         market_data = market_agent.execute(consolidated_idea, search_snippets)
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         logger.warning(f"[IdeaRoute] MarketAgent execution error: {e}. Using fallback.")
         market_data = {}
 
     # Step 4: Competitor Intelligence Agent
     try:
         competitor_data = competitor_agent.execute(consolidated_idea, search_snippets)
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         logger.warning(f"[IdeaRoute] CompetitorAgent execution error: {e}. Using fallback.")
         competitor_data = {}
 
     # Step 5: SWOT Analysis Agent
     try:
         swot_data = swot_agent.execute(consolidated_idea, market_data, competitor_data)
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         logger.warning(f"[IdeaRoute] SWOTAgent execution error: {e}. Using fallback.")
         swot_data = {}
 
@@ -281,4 +317,5 @@ if __name__ == "__main__":
         idea="I want to build an AI platform that helps students prepare for interviews."
     )
     res = validate_idea(test_req)
-    print("Direct Execution Result:", res.data.title, "- Overall Score:", res.data.overall_validation_score)
+    if res.data:
+        print("Direct Execution Result:", res.data.title, "- Overall Score:", res.data.overall_validation_score)

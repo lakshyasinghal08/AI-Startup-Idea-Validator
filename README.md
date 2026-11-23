@@ -12,10 +12,10 @@
 ![License: MIT](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
 
 <p align="center">
-  <strong>An Enterprise-Grade, Multi-Agent AI System for Automated Startup Idea Feasibility Scoring, Real-Time Market Intelligence via Tavily Search, Competitor Moat Analysis, and Management Consulting Dossier Synthesis.</strong>
+  <strong>An Enterprise-Grade Multi-Agent AI System for Automated Startup Idea Feasibility Scoring, Real-Time Market Intelligence via Tavily Search, Competitor Moat Analysis, and Management Consulting Dossier Synthesis.</strong>
 </p>
 
-[System Architecture](docs/architecture.md) • [API Contract Flow](docs/api-flow.md) • [Agent Design](docs/agent-design.md) • [Data Models](docs/data-models.md) • [Milestone 1 Report](docs/milestone-1.md)
+[Research Note](docs/research-note.md) • [System Architecture](docs/architecture.md) • [Agent Design](docs/agent-design.md) • [Data Models](docs/data-models.md) • [Agile Sprint Plan](agile/SprintPlan.md) • [Task Sheet](agile/TaskSheet.md)
 
 </div>
 
@@ -23,403 +23,373 @@
 
 ## 1. Project Overview
 
-### What Problem Does This Project Solve?
-More than **90% of early-stage startups fail**, and the number-one reason is **building something the market does not want or need**. Founders, university incubators, and early-stage venture evaluators frequently spend weeks performing fragmented manual market research:
-- Guessing market sizes without grounded validation.
-- Overlooking existing competitors or dominant legacy alternatives.
-- Formulating subjective, biased SWOT assessments.
-- Struggling to articulate defensible business models and unit economics.
+### Problem Statement
+Over **90% of early-stage startups fail**, and the leading cause is **lack of market demand**—founders invest capital and months of effort building products before validating customer pain points, competitor landscapes, and unit economics. Traditional market research is slow, expensive, and often biased.
 
-The **AI-Based Startup Idea Validator** transforms this process into an automated, data-grounded workflow. By entering a single plain-language startup concept, founders receive a comprehensive, 16-section management consulting brief in under 15 seconds.
-
-### Why Is Startup Validation Important?
-- **Capital & Time Efficiency:** Prevents founders and investors from spending months building products with no market demand.
-- **Data Grounding:** Combines Large Language Models (LLMs) with live web search via Tavily to ensure insights reflect real competitors and current industry trends rather than generic assumptions.
-- **Defensibility:** Evaluates customer switching costs, network effects, and defensive moats early in the venture lifecycle.
-- **Consulting-Grade Output:** Produces structured briefs in the style of top management consulting firms (McKinsey, BCG, Deloitte) with zero chart clutter and clear executive typography.
+### Solution
+The **AI-Based Startup Idea Validator** automates early-stage venture evaluation. A founder submits a raw, natural language concept (e.g., *"An AI platform that helps students prepare for interviews with real-time vocal feedback"*). The platform:
+1. Deconstructs the concept into structured venture dimensions (target audience, business model, problem-solution fit).
+2. Performs real-time web research using the **Tavily AI Search API** to identify live competitors, growth trends, and industry developments.
+3. Synthesizes a structured, executive-grade validation brief in seconds.
 
 ---
 
-## 2. Core Features
+## 2. Milestone 1 Scope
 
-- **Single-Input Minimalist Interface:** Accepts one natural-language description (e.g. *"I want to build an AI platform that helps students prepare for interviews."*) without forcing users to fill out complex forms for budgets, business models, or customer segments.
-- **Autonomous LLM Idea Extraction:** Analyzes unstructured text to extract startup name, problem statement, proposed solution, target customers, industry vertical, business model, and primary value proposition.
-- **Live Market Web Intelligence:** Integrates real-time Tavily Search API queries to identify live competitors, recent industry developments, and current market demand signals.
-- **Target Market Sizing (TAM / SAM / SOM / CAGR):** Provides qualitative and quantitative sizing breakdowns grounded in the specific sector.
-- **Competitor Landscape & Moat Mapping:** Identifies direct incumbent vendors, indirect substitutes, competitor vulnerabilities, and defensible moats.
-- **4-Quadrant Strategic SWOT Matrix:** Evaluates internal strengths, operational weaknesses, external growth opportunities, and macro threats.
-- **16-Section Management Consulting Dossier:** Delivers an investor-ready evaluation report covering Executive Summary, Startup Overview, Problem Statement, Solution, Customers, Industry, Business Model, Market Research, Trends, Competitor Analysis, SWOT, Opportunities, Risks, Recommendations, Validation Scores, and Final Conclusion.
-- **Resilient Multi-Provider Fallback:** Supports Google Gemini API (priority 1), OpenAI (priority 2), and Groq (priority 3), with built-in heuristic fallback so the platform never crashes even if external keys or networks are offline.
+As defined in the **Infosys Springboard Virtual Internship 7.0** curriculum, Milestone 1 focuses on foundational architecture, core agent extraction, and real-time search integration:
+
+### ✅ Included in Milestone 1
+- **Decoupled Architecture:** Clean client-server separation between a React 19 frontend and a FastAPI backend.
+- **Minimalist Presentation Layer:** Professional, Notion/ChatGPT-style single-input interface (ONE textarea, ONE action button, progressive loading state, ONE comprehensive report view).
+- **Core LLM Idea Extraction:** `IdeaAgent` extracting structured venture parameters using Groq Cloud (Llama 3.3 / Qwen / GPT-OSS) or Google Gemini.
+- **Live Search Intelligence:** `SearchAgent` formulating 5 targeted market research vectors and querying the live **Tavily Search API**.
+- **Strict Error Handling:** Immediate HTTP 400 with meaningful JSON (`{"error": "GROQ_API_KEY not configured."}`) if API keys are missing. **Zero placeholder or synthetic fallback data.**
+- **Zero Database Requirement:** Runs in-memory with Pydantic v2 domain schemas. No PostgreSQL or Docker database dependencies.
+- **Automated CI/CD:** GitHub Actions workflows running backend unit tests and frontend build validation.
+
+### ⏳ Future Planned Features (Milestone 2 and Beyond)
+- Multi-agent orchestration graph (Market Agent, Competitor Agent, SWOT Agent, Report Agent).
+- PostgreSQL database storage and SQLAlchemy ORM models.
+- User authentication, session management, and saved idea history.
+- Downloadable PDF report generation.
 
 ---
 
-
-## 🤖 LLM Integration & Intelligent Evaluation
-
-The platform integrates Large Language Models (LLMs) to analyze startup ideas, generate intelligent insights, and support data-driven validation. A reusable LLM service provides a centralized interface for AI-powered operations.
-
-- **Gemini Integration:** Connects with Google's Gemini model for intelligent startup idea analysis and evaluation.
-- **Asynchronous Processing:** Supports asynchronous LLM calls for efficient AI operations.
-- **Structured JSON Generation:** Generates structured AI responses that can be parsed and consumed by different agents.
-- **Retry Mechanism:** Handles temporary API failures with retry logic to improve reliability.
-- **Idea Evaluation Agent:** Analyzes startup ideas based on feasibility, uniqueness, problem clarity, market potential, and solution defensibility.
-- **AI-Generated Insights:** Produces evaluation scores, critical feedback, strengths, weaknesses, and actionable recommendations to help founders refine their ideas.
-
-The modular design allows the LLM service to be reused across multiple agents while keeping AI integration separate from business logic.
-
-## 3. System Architecture & Workflow
-
-The platform adheres to **Clean Architecture** and **Modular Component Design**:
+## 3. System Architecture
 
 ```mermaid
 graph TB
-    subgraph ClientTier ["Presentation Layer (React 19 + Vite + Tailwind CSS)"]
-        User["Founder / Venture Evaluator"] --> SingleInput["Single Idea Input Textarea"]
-        SingleInput --> SPA["React 19 SPA & Axios API Client"]
+    subgraph ClientTier ["Presentation Layer (React 19 + Vite)"]
+        User["Founder / User"] --> SingleInput["Single Idea Input"]
+        SingleInput --> SPA["React 19 SPA & Axios Client"]
     end
 
     subgraph GatewayTier ["API Gateway Layer (FastAPI ASGI :8000)"]
-        SPA -->|RESTful POST /api/v1/idea/validate| FastAPIGateway["FastAPI Gateway"]
-        FastAPIGateway --> CORSSecurity["CORS & Origin Security"]
-        FastAPIGateway --> RequestLogging["Structured Request Logger"]
-        FastAPIGateway --> ValidationRoute["Idea Route Controller"]
+        SPA -->|POST /api/v1/idea/validate| FastAPIGateway["FastAPI Gateway"]
+        FastAPIGateway --> CORSSecurity["CORS Security Middleware"]
+        FastAPIGateway --> Router["Router Controllers (/api/v1)"]
     end
 
-    subgraph AgentTier ["Autonomous Multi-Agent Pipeline"]
-        ValidationRoute --> IdeaAgent["1. IdeaAgent (LLM Extraction)"]
-        IdeaAgent --> SearchAgent["2. SearchAgent (Tavily Search API)"]
-        SearchAgent --> MarketAgent["3. MarketAgent (Market Sizing & CAGR)"]
-        MarketAgent --> CompetitorAgent["4. CompetitorAgent (Landscape & Moats)"]
-        CompetitorAgent --> SWOTAgent["5. SWOTAgent (4-Quadrant Matrix)"]
-        SWOTAgent --> ReportAgent["6. ReportAgent (16-Section Dossier)"]
+    subgraph CoreMilestone1 ["Milestone 1 Active Services"]
+        Router --> IdeaRoute["/api/v1/idea/validate"]
+        Router --> SearchRoute["/api/v1/search/market"]
+        
+        IdeaRoute --> IdeaAgent["Idea Agent"]
+        IdeaRoute --> SearchAgent["Search Agent"]
+        SearchRoute --> SearchAgent
+        
+        IdeaAgent --> LLMService["LLM Service (Groq / Gemini)"]
+        SearchAgent --> TavilyService["Tavily Search API Service"]
     end
 
-    subgraph ServiceTier ["Foundation Models & Web Intelligence"]
-        IdeaAgent & ReportAgent --> LLMService["LLM Service (Gemini / OpenAI / Groq / Fallback)"]
-        SearchAgent --> TavilyService["Tavily Search API (Live Web Context)"]
-    end
-
-    subgraph PresentationOutput ["Consulting Dossier Output"]
-        ReportAgent --> ConsultingReport["McKinsey/BCG 16-Section Dossier"]
-        ConsultingReport --> SPA
-        SPA --> User
+    subgraph ExternalIntelligence ["External Cloud Providers"]
+        LLMService --> GroqAPI["Groq Cloud LPU Inference"]
+        TavilyService --> TavilyAPI["Tavily AI Search Engine"]
     end
 ```
 
-### Complete Idea Processing Workflow
-1. **User Submission:** The user inputs an idea into a single textarea and clicks `"Validate Idea"`.
-2. **Step 1 - Idea Extraction (`IdeaAgent`):** `LLMService` parses the raw idea into structured attributes (problem, solution, audience, industry vertical, business model).
-3. **Step 2 - Live Web Search (`SearchAgent`):** Formulates targeted queries and calls `TavilySearchService` to fetch live market trends, incumbent software, and competitor articles.
-4. **Step 3 - Market Sizing (`MarketAgent`):** Analyzes TAM, SAM, SOM, CAGR, and industry demand drivers for the vertical.
-5. **Step 4 - Competitor Analysis (`CompetitorAgent`):** Maps direct incumbents, indirect substitutes, and sustainable defensive moats.
-6. **Step 5 - Strategic SWOT (`SWOTAgent`):** Cross-correlates findings into an objective 4-quadrant strategic matrix.
-7. **Step 6 - Report Synthesis (`ReportAgent`):** Compiles the 16-section management consulting brief with overall validation score (0–100 scale).
-8. **Client Rendering:** React renders the structured cards with print capability and instant reset.
-
 ---
 
-## 4. Tech Stack
+## 4. Repository Folder Structure
 
-### Frontend
-- **Framework:** [React 19](https://react.dev/) (Modern component-driven architecture)
-- **Build Tool:** [Vite 6](https://vitejs.dev/) (Optimized production bundles and instant HMR)
-- **Styling:** [Tailwind CSS 3.4](https://tailwindcss.com/) (Minimalist, responsive utility-first design)
-- **HTTP Client:** [Axios](https://axios-http.com/) (Centralized interceptors and timeout handling)
-- **Routing:** [React Router DOM v7](https://reactrouter.com/) (Declarative client routing)
-- **Iconography:** [Lucide React](https://lucide.dev/) (Clean, modern SVG icons)
-
-### Backend
-- **Runtime:** [Python 3.12+](https://www.python.org/)
-- **Framework:** [FastAPI](https://fastapi.tiangolo.com/) (High-performance asynchronous ASGI framework)
-- **Server:** [Uvicorn](https://www.uvicorn.org/) (Production ASGI server)
-- **Data Validation:** [Pydantic v2](https://docs.pydantic.dev/) & `pydantic-settings`
-- **HTTP Client:** [HTTPX](https://www.python-httpx.org/) (Asynchronous HTTP for external APIs)
-- **Data Persistence:** In-Memory Domain Objects (Milestone 1 architecture; zero database overhead)
-
-### AI & Search Services
-- **Google Gemini API:** `google-genai` / `gemini-2.0-flash` with exponential backoff retries (Priority 1)
-- **OpenAI GPT:** `openai` / `gpt-4o-mini` (Priority 2)
-- **Groq:** `groq` / `llama-3.3-70b-versatile` (Priority 3)
-- **Tavily AI Search:** `tavily-python` for real-time web research and market intelligence
-- **Heuristic Engine:** Offline deterministic synthesis fallback for resilience
-
-### Deployment
-- **Frontend Target:** Vercel (Edge CDN)
-- **Backend Target:** Render (Web Service Container)
-
----
-
-## 5. Repository Directory Structure
-
-```
+```text
 AI-Startup-Idea-Validator/
 ├── .github/
 │   └── workflows/
-│       ├── backend.yml            # CI: Python compileall syntax check & pytest suite
-│       └── frontend.yml           # CI: Node.js setup, dependencies, and Vite build
+│       ├── backend.yml            # Automated pytest & syntax validation CI
+│       └── frontend.yml           # Automated Vite build & lint CI
+│
+├── agile/
+│   ├── SprintPlan.md              # Agile Scrum Sprint 1 plan & Definition of Done
+│   └── TaskSheet.md               # Team task allocations & PR tracking (Lakshya, Poojitha, Sahil, Supritha)
 │
 ├── backend/
 │   ├── app/
-│   │   ├── api/
-│   │   │   ├── routes/
-│   │   │   │   ├── __init__.py    # Router exports
-│   │   │   │   ├── health.py      # Liveness probe (/api/v1/health/)
-│   │   │   │   ├── idea.py        # Validation endpoints (/api/v1/idea/*)
-│   │   │   │   └── search.py      # Tavily search endpoint (/api/v1/search/*)
-│   │   │   └── __init__.py
+│   │   ├── agents/
+│   │   │   ├── idea_agent.py      # Core Idea Agent (LLM extraction)
+│   │   │   └── search_agent.py    # Core Search Agent (Tavily query generation)
 │   │   │
-│   │   ├── agents/                # Autonomous AI Multi-Agent Network
-│   │   │   ├── __init__.py
-│   │   │   ├── idea_agent.py      # Structured attribute extraction agent
-│   │   │   ├── search_agent.py    # Tavily live web research agent
-│   │   │   ├── market_agent.py    # TAM / SAM / SOM market sizing agent
-│   │   │   ├── competitor_agent.py# Competitive landscape & moat agent
-│   │   │   ├── swot_agent.py      # Strategic SWOT matrix agent
-│   │   │   └── report_agent.py    # 16-section consulting dossier synthesis agent
+│   │   ├── api/
+│   │   │   └── routes/
+│   │   │       ├── health.py      # GET /api/v1/health/ probe
+│   │   │       ├── idea.py        # POST /api/v1/idea/validate
+│   │   │       └── search.py      # POST /api/v1/search/market
 │   │   │
 │   │   ├── core/
-│   │   │   ├── __init__.py
-│   │   │   ├── config.py          # Centralized Pydantic Settings & CORS rules
-│   │   │   └── logging.py         # Standardized structured logging configuration
+│   │   │   ├── config.py          # Centralized Pydantic BaseSettings
+│   │   │   └── logging.py         # Structured logging configuration
 │   │   │
-│   │   ├── models/                # Domain Entities (In-Memory)
-│   │   │   ├── __init__.py
-│   │   │   ├── idea.py            # StartupIdea & ValidationReport entities
-│   │   │   └── search_result.py   # SearchResultCache domain entity
+│   │   ├── schemas/
+│   │   │   ├── idea_schema.py     # Pydantic request/response schemas
+│   │   │   └── response_schema.py # Standard ApiResponse envelope
 │   │   │
-│   │   ├── schemas/               # Pydantic v2 Request/Response Data Contracts
-│   │   │   ├── __init__.py
-│   │   │   ├── idea_schema.py     # IdeaCreateRequest & 16-section IdeaValidationResponse
-│   │   │   └── response_schema.py # Universal ApiResponse envelope
-│   │   │
-│   │   ├── services/              # Foundation Model & External Adapters
-│   │   │   ├── __init__.py
-│   │   │   ├── llm_service.py     # Multi-provider LLM service (Gemini, OpenAI, Groq)
-│   │   │   └── tavily_service.py  # Live Tavily Search API client wrapper
+│   │   ├── services/
+│   │   │   ├── llm_service.py     # Multi-provider LLM client (Groq / Gemini)
+│   │   │   └── tavily_service.py  # Live Tavily Search API client
 │   │   │
 │   │   ├── utils/
-│   │   │   ├── __init__.py
-│   │   │   └── helpers.py         # Sanitizers, ID generators, and helpers
+│   │   │   └── helpers.py         # ID generator and sanitizers
 │   │   │
-│   │   └── main.py                # FastAPI application entrypoint & middleware
+│   │   └── main.py                # ASGI application factory
 │   │
 │   ├── tests/
-│   │   ├── __init__.py
-│   │   └── test_health.py         # Comprehensive test suite (routes, agents, schema)
-│   │
-│   ├── requirements.txt           # Python backend dependencies
+│   │   └── test_health.py         # 11 unit & integration tests
+│   ├── requirements.txt           # Python dependencies
 │   ├── .env.example               # Backend environment variables template
-│   └── README.md                  # Backend setup guide
+│   └── README.md                  # Backend guide
 │
 ├── frontend/
-│   ├── public/
-│   │   └── favicon.svg            # Branded application favicon
-│   │
 │   ├── src/
 │   │   ├── api/
-│   │   │   ├── client.js          # Centralized Axios client & interceptors
-│   │   │   └── ideaApi.js         # Frontend API methods (validate, health, search)
-│   │   │
-│   │   ├── assets/
-│   │   │   └── logo.svg           # Application logo
-│   │   │
-│   │   ├── components/
-│   │   │   └── common/            # Clean UI primitives
-│   │   │       ├── Header.jsx     # Navigation bar with route highlight
-│   │   │       ├── Footer.jsx     # Minimalist footer
-│   │   │       ├── Button.jsx     # Reusable button with variants
-│   │   │       └── Card.jsx       # Standard structured card container
-│   │   │
+│   │   │   ├── client.js          # Centralized Axios client & error interceptor
+│   │   │   └── ideaApi.js         # API integration client methods
+│   │   ├── components/common/     # Button, Card, Header, Footer
 │   │   ├── pages/
-│   │   │   ├── HomePage.jsx       # Landing overview & quick start
-│   │   │   ├── ValidatorPage.jsx  # Single-input form & 16-section consulting dossier
-│   │   │   ├── AboutPage.jsx      # Architecture, internship details, and team info
-│   │   │   └── NotFoundPage.jsx   # 404 error page
-│   │   │
-│   │   ├── styles/
-│   │   │   └── index.css          # Tailwind CSS directives
-│   │   │
-│   │   ├── App.jsx                # React Router DOM route hierarchy
+│   │   │   ├── HomePage.jsx       # Overview landing
+│   │   │   └── ValidatorPage.jsx  # Single textarea, submit button & report view
+│   │   ├── App.jsx                # React Router DOM
 │   │   └── main.jsx               # React 19 entrypoint
-│   │
-│   ├── index.html                 # SPA HTML shell
-│   ├── package.json               # NPM package manifest
-│   ├── vite.config.js             # Vite configuration with /api proxy
-│   ├── tailwind.config.js         # Tailwind design system configuration
-│   └── README.md                  # Frontend setup guide
+│   ├── package.json
+│   ├── vite.config.js
+│   └── tailwind.config.js
 │
-└── docs/                          # Architectural Documentation
-    ├── architecture.md            # Clean Architecture specification
-    ├── api-flow.md                # REST API schemas & sequence diagrams
-    ├── agent-design.md            # Multi-agent coordination blueprint
-    ├── data-models.md             # Domain entities & schema contracts
-    └── milestone-1.md             # Milestone 1 delivery report
+├── docs/
+│   ├── research-note.md           # Frameworks, Multi-Agent patterns & Search API analysis
+│   ├── architecture.md            # Clean Architecture specification
+│   ├── agent-design.md            # Multi-agent coordination blueprint
+│   ├── data-models.md             # Pydantic domain models & schemas
+│   └── milestone-1.md             # Milestone 1 overview
+│
+├── .gitignore
+├── LICENSE
+└── README.md
 ```
 
 ---
 
-## 6. Installation & Setup
+## 5. Environment Variables & Configuration
 
-### Prerequisites
-- **Python:** Version 3.12 or newer
-- **Node.js:** Version 20 or newer
-- **npm:** Version 10 or newer
-- **Git**
+Create a `.env` file in `backend/` (or copy from `backend/.env.example`):
 
-### Step-by-Step Installation
-
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/lakshyasinghal08/AI-Startup-Idea-Validator.git
-   cd AI-Startup-Idea-Validator
-   ```
-
-2. **Backend Setup:**
-   ```bash
-   # Navigate to backend
-   cd backend
-
-   # Create virtual environment
-   python -m venv venv
-
-   # Activate virtual environment
-   # On Windows PowerShell:
-   .\venv\Scripts\Activate.ps1
-   # On macOS/Linux:
-   source venv/bin/activate
-
-   # Install dependencies
-   pip install --upgrade pip
-   pip install -r requirements.txt
-   ```
-
-3. **Frontend Setup:**
-   ```bash
-   # Navigate to frontend (from repository root)
-   cd frontend
-
-   # Install dependencies
-   npm install
-   ```
-
----
-
-## 7. Environment Variables
-
-Create a `.env` file in the `backend/` directory using `backend/.env.example` as a template:
+```bash
+cp backend/.env.example backend/.env
+```
 
 ```env
-# Application Settings
-APP_NAME=AI-Based Startup Idea Validator
-ENVIRONMENT=development
+# Server Configuration
+APP_NAME="AI-Startup-Idea-Validator"
+ENVIRONMENT="development"
 PORT=8000
-API_PREFIX=/api/v1
+API_PREFIX="/api/v1"
+FRONTEND_URL="http://localhost:5173"
 
-# CORS Configuration
-FRONTEND_URL=http://localhost:5173
+# 1. AI LLM Provider Configuration
+# Choose active provider: 'groq' | 'gemini' | 'openai'
+DEFAULT_LLM_PROVIDER="groq"
 
-# LLM Provider Configuration
-# Set to 'auto', 'gemini', 'openai', or 'groq'
-DEFAULT_LLM_PROVIDER=auto
+# Groq Cloud API Key (Sign up free: https://console.groq.com/keys)
+GROQ_API_KEY="gsk_your_groq_api_key_here"
 
-# API Keys (Optional: system uses intelligent heuristic fallback if not provided)
-GEMINI_API_KEY=your-gemini-api-key-here
-OPENAI_API_KEY=your-openai-api-key-here
-GROQ_API_KEY=your-groq-api-key-here
-TAVILY_API_KEY=your-tavily-api-key-here
+# (Optional) Google Gemini API Key (Sign up free: https://aistudio.google.com/app/apikey)
+GEMINI_API_KEY="your_gemini_api_key_here"
+
+# 2. Real-Time Web Search API
+# Tavily API Key (1,000 free searches/month: https://tavily.com)
+TAVILY_API_KEY="tvly-your_tavily_api_key_here"
 ```
-
-| Variable | Description | Default | Required |
-| :--- | :--- | :--- | :--- |
-| `APP_NAME` | Project title for OpenAPI documentation | `AI-Based Startup Idea Validator` | Optional |
-| `ENVIRONMENT` | Execution mode (`development` / `production`) | `development` | Optional |
-| `PORT` | ASGI server port | `8000` | Optional |
-| `FRONTEND_URL` | Frontend origin for CORS whitelist | `http://localhost:5173` | Recommended |
-| `DEFAULT_LLM_PROVIDER` | Primary LLM provider (`auto`, `gemini`, `openai`, `groq`) | `auto` | Recommended |
-| `GEMINI_API_KEY` | Google Gemini API Key | None | Optional (Fallback active) |
-| `OPENAI_API_KEY` | OpenAI API Key | None | Optional (Fallback active) |
-| `GROQ_API_KEY` | Groq API Key | None | Optional (Fallback active) |
-| `TAVILY_API_KEY` | Tavily Search API Key | None | Optional (Fallback active) |
 
 ---
 
-## 8. Running the Project
+## 6. Installation & Execution Guide
 
-### Running Backend
+### Prerequisites
+- **Python:** 3.12+ (or 3.13+)
+- **Node.js:** 20+
+- **npm:** 10+
+- **Git**
+
+### A. Backend Setup & Launch
+
 ```powershell
-# From the repository root (with virtual environment active)
-$env:PYTHONPATH="backend"
+# 1. Navigate to backend directory
+cd backend
+
+# 2. Create and activate virtual environment
+python -m venv .venv
+
+# On Windows PowerShell:
+.\.venv\Scripts\Activate.ps1
+# On macOS/Linux:
+source .venv/bin/activate
+
+# 3. Install dependencies
+pip install --upgrade pip
+pip install -r requirements.txt
+
+# 4. Start the FastAPI server
 python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
-- Interactive Swagger UI: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
-- Health Probe: [http://127.0.0.1:8000/api/v1/health/](http://127.0.0.1:8000/api/v1/health/)
+* **API Documentation (Swagger UI):** [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+* **Health Check Probe:** [http://127.0.0.1:8000/api/v1/health/](http://127.0.0.1:8000/api/v1/health/)
 
-### Running Frontend
+### B. Frontend Setup & Launch
+
 ```powershell
-# In a separate terminal
+# In a separate terminal, navigate to frontend
 cd frontend
+
+# 1. Install dependencies
+npm install
+
+# 2. Start the Vite development server
 npm run dev
 ```
-- Web Application: [http://localhost:5173](http://localhost:5173)
+* **Web Application:** [http://localhost:5173](http://localhost:5173)
 
 ---
 
-## 9. API Endpoints
+## 7. Core AI & Search Integration
 
-All endpoints are versioned under `/api/v1`:
+### Idea Extraction (`IdeaAgent`)
+The `IdeaAgent` receives raw, unstructured user input and instructs the LLM via strict JSON schema prompting to extract:
+* `startup_name`: Working venture name or brand.
+* `industry`: Primary market categorization.
+* `problem_statement`: Verified user pain point.
+* `proposed_solution`: Automated product approach.
+* `target_customers`: Intended demographic or B2B persona.
+* `business_model`: Commercial monetization structure.
+* `value_proposition`: Primary defensible value driver.
 
-| Method | Endpoint | Description | Request Body | Response Model |
-| :--- | :--- | :--- | :--- | :--- |
-| `GET` | `/` | Root server health and metadata | None | JSON |
-| `GET` | `/api/v1/health/` | Service liveness probe | None | JSON |
-| `POST` | `/api/v1/idea/validate` | Multi-agent validation pipeline | `{"idea": "string"}` | `ApiResponse[IdeaValidationResponse]` |
-| `GET` | `/api/v1/idea/{idea_id}` | Retrieve validation dossier by ID | None | `ApiResponse[IdeaValidationResponse]` |
-| `POST` | `/api/v1/search/market` | Direct Tavily web market search | `{"query": "string", "max_results": 5}` | `ApiResponse[MarketSearchResponse]` |
+### Live Market Search (`SearchAgent` + Tavily)
+The `SearchAgent` generates 5 multi-vector queries:
+1. `"{startup_name}" {industry} {problem} market trends industry developments`
+2. `"{startup_name}" {industry} {problem} market demand growth opportunities`
+3. `"{startup_name}" {industry} {problem} competitors competing products alternative solutions`
+4. `"{startup_name}" {industry} {problem} customer problems pain points unmet needs`
+5. `"{startup_name}" {industry} {problem} industry gaps emerging opportunities`
+
+Each query is executed against the live Tavily Search API, returning genuine titles, URLs, pre-cleaned content snippets, and relevance scores.
 
 ---
 
-## 10. Automated Testing
+## 8. Example Input & Output
 
-The backend includes a comprehensive `unittest` and `pytest`-compatible test suite:
+### Example Request (`POST /api/v1/idea/validate`)
 
-```powershell
-# Run tests directly
-$env:PYTHONPATH="backend"
-python backend/tests/test_health.py
-
-# Or run via pytest
-pytest backend/tests/test_health.py -v
+```json
+{
+  "idea": "I want to build an AI platform that helps students prepare for job interviews through real-time vocal analysis and mock coding sessions."
+}
 ```
 
-All 6 test cases verify:
-- Health check controller liveness.
-- Single-input idea validation execution.
-- Composite payload idea validation execution.
-- Report retrieval by ID.
-- Live Tavily market search query execution.
-- FastAPI route registration.
+### Example Structured Response
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "idea_8f21a4",
+    "title": "InterviewPrep AI",
+    "status": "completed",
+    "scores": {
+      "overall": 84.5,
+      "feasibility": 88.0,
+      "market_demand": 85.0,
+      "uniqueness": 80.5
+    },
+    "executive_summary": "InterviewPrep AI addresses acute friction in graduate placement by delivering automated, real-time vocal feedback and adaptive coding interview simulations.",
+    "startup_overview": "An AI-powered interview coaching and skill-assessment platform targeting tertiary students and career switchers.",
+    "problem_statement": "Students face high anxiety and lack personalized, cost-effective feedback during competitive tech and professional interviews.",
+    "proposed_solution": "Real-time speech-pattern analysis, behavioral feedback, and simulated technical mock interviews powered by specialized LLMs.",
+    "target_customers": "University seniors, coding bootcamp graduates, and entry-level job seekers.",
+    "industry": "EdTech & Career Services",
+    "business_model": "Freemium Subscription (SaaS) with university B2B licensing",
+    "market_research": "Real-time market signals indicate accelerating demand for AI career development tools with expanding corporate hiring automation.",
+    "market_trends": [
+      "Migration toward automated recruitment screening tools.",
+      "Growing university adoption of career placement SaaS.",
+      "Increasing demand for real-time vocal and biometric confidence coaching."
+    ],
+    "competitor_analysis": {
+      "direct_competitors": [
+        {"name": "Pramp", "vulnerability": "Requires human peer matching; limited AI vocal diagnostics"},
+        {"name": "Interviewing.io", "vulnerability": "High per-session pricing; limited entry-level focus"}
+      ],
+      "indirect_competitors": ["University career centers and generic mock interview YouTube guides"],
+      "defensive_moats": ["Proprietary speech-analysis feedback loops and university LMS integrations"]
+    },
+    "swot_analysis": {
+      "strengths": ["Automated 24/7 availability", "Zero human-evaluator scheduling overhead", "Scalable unit economics"],
+      "weaknesses": ["Requires continuous calibration across diverse vocal accents", "Early customer acquisition costs"],
+      "opportunities": ["B2B enterprise licensing to university career centers", "Expansion into corporate recruitment screening"],
+      "threats": ["Incumbent job boards bundling free AI practice tools", "Shifting corporate interview formats"]
+    },
+    "opportunities": ["Expansion into technical whiteboard coding", "Enterprise pre-screening partnerships"],
+    "risks": ["Vocal bias across regional accents", "Fast follower features from established job boards"],
+    "recommendations": ["Pilot with 3 university coding bootcamps", "Implement accent-agnostic speech models"],
+    "overall_validation_score": 84.5,
+    "final_conclusion": "Strong commercial viability with high addressable demand. Prioritize university partnerships as a low-CAC beachhead."
+  },
+  "message": "Idea validated successfully via multi-agent pipeline",
+  "errors": null
+}
+```
 
 ---
 
-## 11. Completed vs. Future Scope
+## 9. Automated Testing & Quality Assurance
 
-| Feature / Milestone | Scope Status | Notes |
-| :--- | :--- | :--- |
-| **Single-Input UX** | Milestone 1 (Completed) | Minimalist, single textarea interface with one-click sample insertion. |
-| **Real LLM Integration** | Milestone 1 (Completed) | Multi-provider support (Gemini, OpenAI, Groq) with retries and fallback. |
-| **Real Tavily Search** | Milestone 1 (Completed) | Live web intelligence retrieval for market trends and competitors. |
-| **16-Section Consulting Dossier** | Milestone 1 (Completed) | McKinsey/BCG-style structured cards without chart clutter. |
-| **In-Memory Architecture** | Milestone 1 (Completed) | Standalone local execution without requiring database or Docker services. |
-| **Deep Agent Orchestration Graph** | Milestone 4 (Planned) | Advanced DAG workflow state coordination with LangGraph/asyncio. |
-| **PostgreSQL Persistence** | Milestone 5 (Planned) | Persistent user accounts, validation history, and Alembic migrations. |
-| **PDF Dossier Generation** | Milestone 6 (Planned) | Downloadable ReportLab PDF dossiers. |
+The backend includes a comprehensive `pytest` and `unittest` verification suite:
+
+```powershell
+# Run the complete test suite
+.\backend\.venv\Scripts\pytest.exe backend -v
+```
+
+### Test Coverage Highlights (11 Scenarios)
+1. `test_health_check_controller`: Asserts service status, version, and environment metadata.
+2. `test_app_routes_registration`: Validates all required routes (`/`, `/health`, `/idea/validate`, `/idea/{id}`, `/search/market`, `/docs`).
+3. `test_idea_validation_controller`: Tests composite submission payload parsing.
+4. `test_single_input_idea_validation`: Tests raw single-string natural language validation.
+5. `test_get_idea_validation_by_id`: Validates dossier retrieval by unique ID.
+6. `test_market_search_controller`: Validates Tavily market search response structure.
+7. `test_market_search_missing_key_error`: Asserts strict HTTP 400 when `TAVILY_API_KEY` is missing.
+8. `test_idea_validate_missing_key_error`: Asserts strict HTTP 400 when LLM key is missing.
+9. Pytest standalone verification hooks.
 
 ---
 
-## 12. License & Acknowledgments
+## 10. Known Limitations
 
-This project is developed as part of **Infosys Springboard Virtual Internship 7.0**.
+- **In-Memory Volatility:** In Milestone 1, validation dossiers are generated in-memory and not stored in a persistent database. Server restarts reset past validations.
+- **Network Dependency:** Real-time market search requires an outbound internet connection to reach `https://api.tavily.com`.
+- **API Quotas:** Tavily's free tier provides 1,000 queries/month. Groq Cloud provides free rate-limited tier access.
 
-- **Author:** Lakshya Singhal
-- **License:** MIT License
-- **Mentorship:** Infosys Springboard Team
+---
+
+## 11. Deployment Strategy
+
+The application is structured for rapid deployment across modern cloud platforms:
+
+* **Backend Deployment (Render / Railway / Fly.io):**
+  * Runtime: Python 3.12+ Dockerfile or Python buildpack.
+  * Start Command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+  * Environment Variables: `GROQ_API_KEY`, `TAVILY_API_KEY`, `FRONTEND_URL`.
+* **Frontend Deployment (Vercel / Netlify):**
+  * Framework: Vite React.
+  * Build Command: `npm run build`
+  * Output Directory: `dist`
+  * Environment Variables: `VITE_API_BASE_URL` pointing to the deployed backend URL.
+
+---
+
+## 12. Team & Acknowledgments
+
+Developed as part of the **Infosys Springboard Virtual Internship 7.0**.
+
+* **Lakshya Singhal** — Project Lead & Full Stack Architect
+* **Poojitha B** — Senior AI & Backend Engineer
+* **Sahil** — Senior Backend & Search Engineer
+* **Supritha** — Senior Frontend & UI/UX Engineer
+
+**License:** MIT License
