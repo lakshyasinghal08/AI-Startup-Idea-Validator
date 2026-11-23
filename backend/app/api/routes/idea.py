@@ -69,13 +69,6 @@ def validate_idea(payload: IdeaCreateRequest) -> ApiResponse[IdeaValidationRespo
             detail=f"{missing_key} not configured.",
         )
 
-    if not tavily_service.is_configured():
-        logger.error("[IdeaRoute] TAVILY_API_KEY is not configured.")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="TAVILY_API_KEY not configured.",
-        )
-
     raw_idea = (payload.idea or payload.description or payload.title or "").strip()
     if not raw_idea:
         raise HTTPException(
@@ -129,9 +122,13 @@ def validate_idea(payload: IdeaCreateRequest) -> ApiResponse[IdeaValidationRespo
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="TAVILY_API_KEY not configured.",
         )
+    
     except Exception as e:  # noqa: BLE001
-        logger.warning(f"[IdeaRoute] SearchAgent execution error: {e}")
-        search_snippets = []
+        logger.exception("[IdeaRoute] SearchAgent execution failed.")
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Market search failed: {e!s}",
+        )
 
     # Step 3: Market Analysis Agent
     try:

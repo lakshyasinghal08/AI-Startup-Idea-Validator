@@ -86,7 +86,7 @@ def search_market(payload: MarketSearchRequest):
         logger.error("[SearchRoute] Tavily configuration error: %s", exc)
 
         raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
         ) from exc
 
