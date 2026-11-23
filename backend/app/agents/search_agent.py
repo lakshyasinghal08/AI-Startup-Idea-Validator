@@ -114,10 +114,14 @@ class SearchAgent:
                     seen_urls.add(normalized_url)
                     all_results.append(result)
 
-            except Exception as exc:  # noqa: BLE001
-                logger.error(
-                    f"[SearchAgent] Search query {index} failed: {exc}"
+            except Exception as exc:
+                logger.exception(
+                    "[SearchAgent] Search query %s failed.", index
                 )
+                raise RuntimeError(
+                    f"Market research failed while executing search query {index}. "
+                    "Please retry when the search service is available."
+                ) from exc
 
         logger.info(
             f"[SearchAgent] Research completed. "
