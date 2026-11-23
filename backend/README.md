@@ -23,10 +23,9 @@ backend/
 ├── .env.example                # Environment configuration template
 └── README.md                   # Developer documentation
 ```
-
 ## 🤖 LLM Integration (Google Gemini)
 
-The backend integrates **Google Gemini** to provide AI-powered startup idea evaluation. The integration is designed to be modular, asynchronous, and reusable across AI agents.
+The backend integrates **Google Gemini** to support AI-powered startup idea analysis and evaluation. The integration is designed to be modular and reusable across AI agents through a centralized LLM service.
 
 ### LLM Service
 
@@ -34,54 +33,61 @@ A reusable `LLMService` is implemented in `app/services/llm_service.py` to manag
 
 **Features:**
 - Google Gemini API integration for AI-powered analysis.
-- Asynchronous text generation.
+- Synchronous and asynchronous text generation support.
 - Structured JSON generation for consistent AI responses.
 - JSON parsing and validation support.
-- Retry handling for temporary API failures such as service unavailability (503).
-- API key management through environment variables.
+- Retry handling for temporary API failures, including service unavailability (503).
+- API key and provider configuration through environment variables.
+- Heuristic fallback mechanism when external LLM services are unavailable.
 
 ### Idea Agent Integration
 
-The `IdeaAgent`, implemented in `app/agents/idea_agent.py`, uses the LLM service to evaluate startup ideas and generate structured analysis.
+The `IdeaAgent`, implemented in `app/agents/idea_agent.py`, uses the centralized LLM service to extract startup information and dynamically evaluate startup ideas.
 
 The agent evaluates startup ideas based on the following criteria:
 
 | Evaluation Criteria | Description |
 |---|---|
-| Overall Score | Overall assessment of the startup idea |
-| Feasibility | Practicality of implementing the idea |
+| Problem-Solution Fit | How effectively the proposed solution addresses the identified problem |
+| Feasibility | Practicality of implementing the startup idea |
 | Uniqueness | Originality and differentiation from existing solutions |
-| Problem Clarity | Clarity and importance of the problem being addressed |
+| Problem Clarity | Clarity of the problem and its significance to the target audience |
 | Market Potential | Potential demand and business opportunity |
-| Solution Defensibility | Competitive advantage and sustainability |
+| Solution Defensibility | Potential competitive advantage and long-term sustainability |
 
 ### AI-Generated Evaluation Output
 
-The Idea Agent generates:
+The Idea Agent generates structured evaluation results containing:
 
-- Overall and individual evaluation scores.
-- Detailed critique of the startup idea.
-- Strengths of the proposed idea.
+- Evaluation scores for individual criteria.
+- Problem-solution fit analysis.
+- Strengths of the proposed startup idea.
 - Weaknesses and potential risks.
 - Actionable recommendations for improvement.
 
-### Reliability
+The evaluation is generated dynamically based on the startup idea rather than relying on fixed evaluation scores.
 
-The LLM service includes retry logic for temporary API failures. When a request encounters a temporary error, it retries the operation with increasing delays before reporting failure.
+### Reliability and Fallback Handling
 
-This helps improve reliability when external AI services experience temporary availability issues.
+The LLM service incorporates retry logic to handle temporary API failures. When a request encounters a retryable error, the service retries the operation before switching to fallback handling.
+
+If the external LLM service remains unavailable, a local heuristic fallback provides a basic response to ensure the application can continue operating.
+
+Fallback results are intended for preliminary analysis and may not reflect the depth or accuracy of an actual LLM-generated evaluation.
 
 ### Testing
 
-The Gemini integration and Idea Agent were manually tested to verify:
+The integration was tested through manual execution to verify:
 
-- Successful text generation.
-- Structured JSON generation and parsing.
-- AI-powered startup idea evaluation.
-- Retry handling during temporary API failures.
+- LLM provider configuration and API key loading.
+- Text generation and structured JSON generation workflows.
+- Startup idea extraction and evaluation pipeline.
+- Retry handling for temporary API failures.
+- Fallback behavior when Gemini is unavailable.
 
-The integration enables the backend to generate dynamic startup evaluations using AI rather than relying on predefined or hardcoded evaluation responses.
----
+During testing, Gemini returned temporary `503 UNAVAILABLE` errors, so the fallback mechanism was exercised. Actual Gemini-generated evaluation could not be confirmed during those test runs.
+
+This integration enables the backend to provide dynamic startup idea evaluations, structured insights, and fallback-based resilience instead of depending solely on predefined evaluation scores.
 
 ## 🛠️ Local Development Setup
 

@@ -6,7 +6,7 @@ Purpose:
     and consulting report synthesis across foundation models.
 
 Supported Providers (in priority order):
-    1. Google Gemini API (gemini-2.0-flash / gemini-1.5-flash) with exponential backoff retries.
+    1. Google Gemini API (gemini-3.5-flash-lite) with exponential backoff retries.
     2. OpenAI GPT (gpt-4o-mini / gpt-4o).
     3. Groq (llama-3.3-70b-versatile / llama-3.1-8b-instant).
     4. Heuristic Domain Engine (offline/fallback mode when credentials are not configured).
@@ -228,37 +228,160 @@ class LLMService:
             "Near-term execution should prioritize rapid MVP validation, clear unit economics, and targeted customer interviews."
         )
 
-    def _heuristic_structured_json(self, system_prompt: str, user_prompt: str) -> Dict[str, Any]:
-        """Generates structured JSON evaluation when providers are unavailable."""
-        if "startup_name" in system_prompt.lower():
-            return self._heuristic_extract(user_prompt)
+    def _heuristic_structured_json(
+        self, system_prompt: str, user_prompt: str
+    ) -> Dict[str, Any]:
+        """Generates structured heuristic output when LLM providers are unavailable."""
 
         prompt_lower = user_prompt.lower()
+        system_lower = system_prompt.lower()
+
+        # Preserve the existing startup extraction fallback.
+        if "startup_name" in system_lower:
+            return self._heuristic_extract(user_prompt)
+
+        # Handle IdeaAgent AI evaluation fallback.
+        if "solution_defensibility_score" in system_lower:
+            required_fields = [
+                "problem_statement",
+                "proposed_solution",
+                "target_customers",
+                "business_model",
+            ]
+
+            available_fields = sum(
+                1
+                for field in required_fields
+                if field in prompt_lower
+                and not any(
+                    marker in prompt_lower.split(field, 1)[-1][:100]
+                    for marker in ["unknown", "not specified", "none"]
+                )
+            )
+
+            completeness = available_fields / len(required_fields)
+
+            # Heuristic scores depend on information completeness and idea details.
+            specificity_keywords = [
+                "platform", "application", "app", "automate", "predict",
+                "recommend", "analyze", "personalized", "real-time",
+                "machine learning", "artificial intelligence", "ai",
+                "mobile", "web", "marketplace", "subscription",
+            ]
+
+            specificity = sum(
+                1 for keyword in specificity_keywords if keyword in prompt_lower
+            )
+
+            feasibility_score = min(
+                90, max(35, round(45 + completeness * 25 + min(specificity, 5) * 4))
+            )
+            problem_clarity_score = min(
+                90, max(30, round(35 + completeness * 35 + min(specificity, 5) * 3))
+            )
+            uniqueness_score = min(
+                85, max(25, round(40 + min(specificity, 5) * 5))
+            )
+            market_potential_score = min(
+                85, max(30, round(40 + completeness * 25 + min(specificity, 4) * 4))
+            )
+            solution_defensibility_score = min(
+                80, max(20, round(30 + completeness * 20 + min(specificity, 4) * 5))
+            )
+
+            missing_information = [
+                field.replace("_", " ")
+                for field in required_fields
+                if field in prompt_lower
+                and any(
+                    marker in prompt_lower.split(field, 1)[-1][:100]
+                    for marker in ["unknown", "not specified", "none"]
+                )
+            ]
+
+            strengths = []
+            weaknesses = []
+            recommendations = []
+
+            if completeness >= 0.75:
+                strengths.append(
+                    "The idea includes several key startup components for initial evaluation."
+                )
+            else:
+                weaknesses.append(
+                    "Some important startup details are missing, limiting evaluation confidence."
+                )
+                recommendations.append(
+                    "Define the problem, proposed solution, target customers, and revenue model more clearly."
+                )
+
+            if specificity >= 3:
+                strengths.append(
+                    "The description includes specific product or implementation details."
+                )
+            else:
+                weaknesses.append(
+                    "The solution description may be too broad to establish differentiation."
+                )
+                recommendations.append(
+                    "Specify the core product functionality and how it differs from existing alternatives."
+                )
+
+            weaknesses.append(
+                "The fallback evaluation cannot verify market demand or competitor information."
+            )
+            recommendations.append(
+                "Validate the idea through competitor research and interviews with target users."
+            )
+
+            if missing_information:
+                recommendations.append(
+                    "Clarify the following missing details: "
+                    + ", ".join(missing_information)
+                    + "."
+                )
+
+            return {
+                "problem_solution_fit": (
+                    "This is a rule-based preliminary assessment derived from the "
+                    "provided startup description. The problem-solution fit has not "
+                    "been independently validated by an AI provider or market research."
+                ),
+                "feasibility_score": feasibility_score,
+                "uniqueness_score": uniqueness_score,
+                "problem_clarity_score": problem_clarity_score,
+                "market_potential_score": market_potential_score,
+                "solution_defensibility_score": solution_defensibility_score,
+                "strengths": strengths,
+                "weaknesses": weaknesses,
+                "recommendations": recommendations,
+            }
+
+        # Preserve compatibility with other agents using the older fallback.
         if "farmer" in prompt_lower or "agri" in prompt_lower:
             return {
-                "idea_summary": "An intelligent AI agricultural platform empowering smallholder farmers with disease diagnosis, yield forecasting, and market advisory.",
-                "feasibility_score": 84.0,
+                "idea_summary": (
+                    "An agricultural technology concept focused on farmer needs."
+                ),
+                "feasibility_score": 60,
                 "strengths": [
-                    "Directly addresses high-value agricultural uncertainty and crop loss",
-                    "Strong unit economics via tiered cooperative and institutional partnerships",
-                    "High social impact and regional government subsidy tailwinds",
+                    "Addresses a potentially important agricultural use case."
                 ],
                 "weaknesses": [
-                    "Requires multi-lingual voice-first interface and low-bandwidth resilience",
-                    "Initial farmer trust barrier and localized agricultural extension integration",
+                    "Requires validation with farmers and agriculture domain experts."
                 ],
             }
+
         return {
-            "idea_summary": f"Comprehensive AI-driven solution addressing {user_prompt[:80]}...",
-            "feasibility_score": 85.0,
+            "idea_summary": (
+                "A preliminary startup concept requiring further validation."
+            ),
+            "feasibility_score": 50,
             "strengths": [
-                "Laser-focused value proposition addressing customer friction",
-                "Scalable software architecture with high gross margins",
-                "Defensible data feedback loops over time",
+                "The concept provides a starting point for product discovery."
             ],
             "weaknesses": [
-                "Early brand obscurity requiring initial reference pilots",
-                "Potential incumbent feature bundling",
+                "Market demand and competitive differentiation have not been validated."
             ],
         }
 
@@ -277,7 +400,7 @@ class LLMService:
                         temperature=temperature,
                     ) if genai_types else {"temperature": temperature}
                     response = client.models.generate_content(
-                        model="gemini-2.0-flash",
+                        model="gemini-3.8-flash",
                         contents=user_prompt,
                         config=config,
                     )
@@ -287,7 +410,7 @@ class LLMService:
                 # Try legacy google.generativeai
                 if HAS_LEGACY_GENAI:
                     legacy_genai.configure(api_key=self.gemini_key)
-                    model = legacy_genai.GenerativeModel("gemini-1.5-flash")
+                    model = legacy_genai.GenerativeModel("gemini-3.5-flash-lite")
                     response = model.generate_content(
                         combined_prompt,
                         generation_config={"temperature": temperature},
@@ -296,7 +419,7 @@ class LLMService:
                         return response.text
 
                 # Direct REST API fallback
-                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={self.gemini_key}"
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key={self.gemini_key}"
                 with httpx.Client(timeout=httpx.Timeout(4.0, connect=1.5)) as client:
                     resp = client.post(
                         url,
