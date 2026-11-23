@@ -9,7 +9,7 @@ Purpose:
 
 import os
 import sys
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 # Ensure backend root directory is in sys.path
 _current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -18,8 +18,8 @@ _backend_dir = os.path.abspath(os.path.join(_current_dir, "../.."))
 if _backend_dir not in sys.path:
     sys.path.insert(0, _backend_dir)
 
-from app.services.tavily_service import TavilySearchService, tavily_service
 from app.core.logging import logger
+from app.services.tavily_service import TavilySearchService, tavily_service
 
 
 class SearchAgent:
@@ -27,7 +27,7 @@ class SearchAgent:
     Agent responsible for collecting live market intelligence through Tavily.
     """
 
-    def __init__(self, service: Optional[TavilySearchService] = None):
+    def __init__(self, service: TavilySearchService | None = None):
         self.search_service = service or tavily_service
 
     def _generate_queries(
@@ -35,7 +35,7 @@ class SearchAgent:
         startup_name: str,
         industry: str,
         problem_or_solution: str
-    ) -> List[str]:
+    ) -> list[str]:
         """
         Generate targeted queries covering different market research areas.
         """
@@ -59,7 +59,7 @@ class SearchAgent:
         startup_name: str,
         industry: str,
         problem_or_solution: str
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Execute targeted web research and return genuine Tavily results.
         """
@@ -79,7 +79,7 @@ class SearchAgent:
             problem_or_solution.strip()
         )
 
-        all_results: List[Dict[str, Any]] = []
+        all_results: list[dict[str, Any]] = []
         seen_urls = set()
 
         for index, query in enumerate(queries, start=1):
@@ -114,7 +114,7 @@ class SearchAgent:
                     seen_urls.add(normalized_url)
                     all_results.append(result)
 
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 logger.error(
                     f"[SearchAgent] Search query {index} failed: {exc}"
                 )
@@ -148,5 +148,5 @@ if __name__ == "__main__":
             print("URL:", result.get("url"))
             print("Score:", result.get("score"))
 
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         print("SearchAgent test failed:", exc)

@@ -1,88 +1,103 @@
 # Architecture Design Specification
 
-## 1. System Overview
-The **AI-Based Startup Idea Validator with Market Analysis Assistance** is structured as an enterprise-grade, decoupled client-server application adhering to Clean Architecture principles. It facilitates multi-agent AI research, real-time web querying, and synthesis of startup validation dossiers.
-
-Project Context: **Infosys Springboard Virtual Internship 7.0**
+**Project:** AI-Based Startup Idea Validator with Market Analysis Assistance  
+**Program:** Infosys Springboard Virtual Internship 7.0 — Milestone 1  
+**Status:** Milestone 1 Architecture Baseline  
 
 ---
 
-## 2. High-Level Architectural Diagram
+## 1. System Overview
+
+The **AI-Based Startup Idea Validator with Market Analysis Assistance** is an enterprise-grade, decoupled client-server application adhering to Clean Architecture principles. It enables early-stage founders to submit raw startup concepts, extracts structured venture dimensions using foundation Large Language Models (LLMs), and queries real-time market intelligence via the Tavily Search API.
+
+---
+
+## 2. Milestone 1 System Architecture Diagram
 
 ```mermaid
 graph TB
     subgraph ClientTier ["Presentation Layer (React 19 + Vite)"]
-        User["End User / Founder"] --> SPA["React 19 Single Page App"]
-        SPA --> Router["React Router DOM"]
-        Router --> Views["Modular Page Views"]
-        Views --> AxiosClient["Axios API Client Layer"]
+        User["Founder / User"] --> SPA["React 19 Single Page App"]
+        SPA --> ValidatorView["Validator View (One Input + One Report Page)"]
+        ValidatorView --> AxiosClient["Axios API Client Layer"]
     end
 
-    subgraph GatewayTier ["API Gateway Layer (FastAPI ASGI)"]
-        AxiosClient -->|HTTP / JSON| FastAPIGateway["FastAPI Gateway (:8000)"]
+    subgraph GatewayTier ["API Gateway Layer (FastAPI ASGI :8000)"]
+        AxiosClient -->|HTTP POST / JSON| FastAPIGateway["FastAPI Gateway"]
         FastAPIGateway --> CORSMiddleware["CORS Middleware"]
         FastAPIGateway --> RequestLogging["Structured Request Logger"]
         FastAPIGateway --> RouteControllers["Route Controllers (/api/v1)"]
     end
 
-    subgraph ApplicationLogic ["Application & Business Logic"]
+    subgraph CoreMilestone1 ["Milestone 1 Active Architecture"]
         RouteControllers --> HealthRoute["Health API (/health)"]
-        RouteControllers --> IdeaRoute["Idea Validation API (/idea)"]
-        RouteControllers --> SearchRoute["Search & Discovery API (/search)"]
+        RouteControllers --> IdeaRoute["Idea Validation API (/idea/validate)"]
+        RouteControllers --> SearchRoute["Search API (/search/market)"]
         
-        IdeaRoute --> AgentOrchestrator["Multi-Agent Orchestrator"]
+        IdeaRoute --> IdeaAgent["Idea Agent (Venture Extraction)"]
+        IdeaRoute --> SearchAgent["Search Agent (Market Research)"]
+        SearchRoute --> SearchAgent
         
-        subgraph AgentNetwork ["Autonomous Agent Network"]
-            AgentOrchestrator --> SearchAgent["Search Agent"]
-            AgentOrchestrator --> IdeaAgent["Idea Validation Agent"]
-            AgentOrchestrator --> MarketAgent["Market Analysis Agent"]
-            AgentOrchestrator --> CompetitorAgent["Competitor Intelligence Agent"]
-            AgentOrchestrator --> SWOTAgent["SWOT Analysis Agent"]
-            AgentOrchestrator --> ReportAgent["Report Generation Agent"]
-        end
+        IdeaAgent --> LLMService["LLM Service Client (Groq / Gemini)"]
+        SearchAgent --> TavilyService["Tavily Search API Service"]
     end
 
-    subgraph ServiceLayer ["Service & Integration Layer"]
-        SearchAgent --> TavilyClient["Tavily Search API Client"]
-        IdeaAgent --> LLMClient["LLM Client (OpenAI / Gemini)"]
-        MarketAgent --> LLMClient
-        CompetitorAgent --> LLMClient
-        SWOTAgent --> LLMClient
-        ReportAgent --> PDFRenderer["Validation Dossier Synthesis Engine"]
+    subgraph ExternalServices ["External Intelligence Services"]
+        LLMService --> GroqAPI["Groq Cloud / Google Gemini API"]
+        TavilyService --> TavilyAPI["Tavily AI Search Engine"]
     end
 
-    subgraph PersistenceLayer ["Data & Domain Model Layer"]
-        M1Store["In-Memory Domain Objects & Mock Data"]
-        IdeaRoute -.-> M1Store
+    subgraph FutureScope ["Future Planned Features (Milestone 2+)"]
+        MarketAgent["Market Agent (TAM/SAM/SOM Sizing)"]
+        CompetitorAgent["Competitor Intelligence Agent"]
+        SWOTAgent["SWOT Analysis Agent"]
+        ReportAgent["16-Section Report Synthesis Agent"]
+        PostgreSQL["PostgreSQL Relational Database & ORM"]
     end
 ```
 
 ---
 
-## 3. Layered Design Principles
+## 3. Active Milestone 1 Component Architecture
 
 ### 3.1 Presentation Layer (Frontend)
-- **Component-Driven Hierarchy**: Isolation of reusable design components (buttons, input fields, cards) from stateful domain containers.
-- **Service Layer Abstraction**: UI components never make direct HTTP calls; they invoke dedicated service client functions configured with Axios interceptors (`src/api/client.js`).
-- **Client-Side State**: Kept lightweight using React Context for global application state and local component state for forms and view toggles.
+* **Single Responsiveness**: A clean, single-purpose interface consisting of ONE prompt input textarea, ONE submit action button, interactive progress indicators, and ONE comprehensive validation report page.
+* **API Client Abstraction**: Frontend calls pass through `src/api/client.js` with unified error interception that renders exact backend HTTP error messages (e.g. `GROQ_API_KEY not configured` or `TAVILY_API_KEY not configured`).
 
-### 3.2 Gateway & Routing Layer (FastAPI)
-- **Decoupled Routers**: Every domain entity (health, idea, search) is isolated in its own router file under `app/api/routes/`.
-- **Validation Pipeline**: Automatic JSON schema parsing, type coercion, and request validation via Pydantic v2.
-- **Centralized Lifespan & Config**: Environment configurations managed through `pydantic-settings` with type safety and default fallbacks.
+### 3.2 API Gateway Layer (FastAPI)
+* **High-Performance ASGI**: FastAPI application configured with CORS origin security, structured logging, and versioned routing prefix `/api/v1`.
+* **Clean Endpoints**:
+  * `GET /api/v1/health/`: Liveness and readiness health probe.
+  * `POST /api/v1/idea/validate`: Accepts startup description, triggers `IdeaAgent` for structured extraction and `SearchAgent` for market intelligence.
+  * `POST /api/v1/search/market`: Direct web intelligence queries via `SearchAgent` / Tavily API.
 
-### 3.3 Multi-Agent AI Core
-- **Separation of Concerns**: Each agent is responsible for exactly one analysis facet (idea clarity, web search, market sizing, competitor identification, SWOT matrix, and reporting).
-- **Prompt Isolation**: System instructions and prompt templates are decoupled from agent execution logic.
-- **Deterministic Schemas**: Agents return strictly structured Pydantic models rather than free-form text.
-
-### 3.4 Data Persistence Strategy
-- **Lightweight & Standalone**: Pure in-memory domain models and mock data. No running database server or external credentials required. The project starts instantly in any local or cloud environment.
+### 3.3 Core Service & Agent Layer
+* **Idea Agent (`idea_agent.py`)**:
+  * Deconstructs raw text into structured attributes: `startup_name`, `problem_statement`, `proposed_solution`, `target_customers`, `industry`, `business_model`, and `value_proposition`.
+  * Integrates with `LLMService` supporting Groq LPU inference (primary) and Google Gemini (fallback).
+* **Search Agent (`search_agent.py`)**:
+  * Translates extracted startup parameters into 5 targeted market research queries.
+  * Executes live web research through `TavilySearchService` to return clean content snippets with relevance scores.
+* **LLM Service (`llm_service.py`)**:
+  * Multi-provider client supporting Groq Cloud (Llama 3.3 / Qwen / GPT-OSS) and Google Gemini.
+  * Enforces strict configuration checks: if credentials are missing, immediately returns descriptive HTTP 400 errors instead of returning fake or demo responses.
+* **Tavily Service (`tavily_service.py`)**:
+  * Direct integration with `https://api.tavily.com/search`.
+  * Sanitizes, parses, and ranks real web search results without generating fabricated fallback data.
 
 ---
 
-## 4. Scalability & Performance Strategy
-1. **Asynchronous Execution**: Native async handling across FastAPI routes and external API clients.
-2. **Parallel Agent Execution**: Independent agents (such as Market Agent and Competitor Agent) can execute concurrently once web search data is retrieved.
-3. **Stateless Backend**: The FastAPI backend contains no server-bound session state, allowing horizontal autoscaling.
-4. **Static CDN Caching**: The React 19 application compiles into optimized static assets served globally through Vercel's Edge Network.
+## 4. Future Planned Features (Milestone 2 and Beyond)
+
+The following capabilities are architected as modular extensions and will be activated in subsequent milestones:
+
+1. **Market Agent (`market_agent.py`)**:
+   * Algorithmic top-down and bottom-up estimation of TAM (Total Addressable Market), SAM (Serviceable Addressable Market), and SOM (Serviceable Obtainable Market), with CAGR compound projections.
+2. **Competitor Agent (`competitor_agent.py`)**:
+   * Automated mapping of direct and indirect industry incumbents, vulnerability analysis, and defensive moat evaluation.
+3. **SWOT Agent (`swot_agent.py`)**:
+   * Synthesis of a comprehensive 4-quadrant strategic matrix (Strengths, Weaknesses, Opportunities, Threats) correlating internal product capabilities with external market conditions.
+4. **Report Agent (`report_agent.py`)**:
+   * Aggregation into a full 16-section management consulting brief with downloadable PDF generation.
+5. **Persistent Relational Database**:
+   * PostgreSQL database connection with SQLAlchemy ORM and Alembic migrations for persistent history storage and user accounts.

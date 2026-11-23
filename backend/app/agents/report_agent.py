@@ -9,7 +9,7 @@ Purpose:
 
 import os
 import sys
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 # Ensure backend root directory is in sys.path
 _current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -28,12 +28,12 @@ class ReportAgent:
 
     def compile_report(
         self,
-        extracted_idea: Dict[str, Any],
-        search_snippets: Optional[List[Dict[str, Any]]] = None,
-        market_data: Optional[Dict[str, Any]] = None,
-        competitor_data: Optional[Dict[str, Any]] = None,
-        swot_data: Optional[Dict[str, List[str]]] = None,
-    ) -> Dict[str, Any]:
+        extracted_idea: dict[str, Any],
+        search_snippets: list[dict[str, Any]] | None = None,
+        market_data: dict[str, Any] | None = None,
+        competitor_data: dict[str, Any] | None = None,
+        swot_data: dict[str, list[str]] | None = None,
+    ) -> dict[str, Any]:
         """
         Compiles the 16-section consulting report from all agent findings.
         """
@@ -126,7 +126,7 @@ class ReportAgent:
         # Opportunities & Risks
         opportunities = [
             f"Beachhead expansion: Capitalize on initial {industry} beachhead via viral referral loops.",
-            f"Enterprise cohort licensing: Expand into institutional accounts with multi-seat subscriptions.",
+            "Enterprise cohort licensing: Expand into institutional accounts with multi-seat subscriptions.",
             "Data network effects: Aggregate proprietary workflow telemetry to unlock predictive insights.",
             "Ecosystem integrations: Partner with complementary software suites to accelerate distribution.",
         ]
@@ -269,7 +269,7 @@ class ReportAgent:
             "market_sizing": {"tam": tam, "sam": sam, "som": som},
         }
 
-    async def execute(self, complete_analysis_payload: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute(self, complete_analysis_payload: dict[str, Any]) -> dict[str, Any]:
         """
         Orchestrator hook to compile the report dossier.
         """

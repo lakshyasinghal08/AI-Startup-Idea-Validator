@@ -10,7 +10,8 @@ Milestone Notes:
     - Future Milestones: Will be connected to persistent storage and PDF exports.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any
+
 from pydantic import BaseModel, Field, model_validator
 
 
@@ -19,54 +20,54 @@ class IdeaCreateRequest(BaseModel):
     Schema for incoming startup idea validation requests.
     Supports a single natural language description ('idea') or composite individual fields.
     """
-    idea: Optional[str] = Field(
+    idea: str | None = Field(
         default=None,
         description="Single natural language startup idea description",
         examples=["I want to build an AI platform that helps students prepare for interviews."],
     )
-    title: Optional[str] = Field(
+    title: str | None = Field(
         default=None,
         max_length=200,
         description="Startup Name or working title",
         examples=["EcoRoute Logistics"],
     )
-    problem_statement: Optional[str] = Field(
+    problem_statement: str | None = Field(
         default=None,
         description="The core problem the startup intends to solve",
         examples=["Freight carriers lose 15% of annual operating budget on suboptimal fuel routing."],
     )
-    solution: Optional[str] = Field(
+    solution: str | None = Field(
         default=None,
         description="The proposed product or technological solution",
         examples=["AI-powered smart routing system reducing fuel consumption and emissions."],
     )
-    description: Optional[str] = Field(
+    description: str | None = Field(
         default=None,
         description="Composite elevator pitch and problem-solution description",
     )
-    target_market: Optional[str] = Field(
+    target_market: str | None = Field(
         default=None,
         max_length=150,
         description="Industry or market vertical",
         examples=["Logistics & Supply Chain"],
     )
-    target_audience: Optional[str] = Field(
+    target_audience: str | None = Field(
         default=None,
         max_length=255,
         description="Target customers or buyer personas",
         examples=["Mid-market trucking fleets and dispatchers"],
     )
-    monetization_model: Optional[str] = Field(
+    monetization_model: str | None = Field(
         default=None,
         description="Business and revenue model",
         examples=["B2B SaaS monthly recurring subscription"],
     )
-    estimated_budget: Optional[str] = Field(
+    estimated_budget: str | None = Field(
         default=None,
         description="Initial planned budget or capital outlay",
         examples=["$50,000"],
     )
-    additional_info: Optional[str] = Field(
+    additional_info: str | None = Field(
         default=None,
         description="Any additional information, traction, or founder context",
     )
@@ -103,10 +104,10 @@ class IdeaCreateRequest(BaseModel):
 
 class SWOTAnalysis(BaseModel):
     """Structured 4-quadrant SWOT matrix representation."""
-    strengths: List[str] = Field(default_factory=list, description="Internal strengths")
-    weaknesses: List[str] = Field(default_factory=list, description="Internal weaknesses")
-    opportunities: List[str] = Field(default_factory=list, description="External opportunities")
-    threats: List[str] = Field(default_factory=list, description="External risks & threats")
+    strengths: list[str] = Field(default_factory=list, description="Internal strengths")
+    weaknesses: list[str] = Field(default_factory=list, description="Internal weaknesses")
+    opportunities: list[str] = Field(default_factory=list, description="External opportunities")
+    threats: list[str] = Field(default_factory=list, description="External risks & threats")
 
 
 class ValidationScores(BaseModel):
@@ -129,45 +130,45 @@ class IdeaValidationResponse(BaseModel):
     scores: ValidationScores = Field(default_factory=ValidationScores)
 
     # 16 Primary Consulting Report Sections
-    executive_summary: Optional[str] = Field(default="", description="1. Executive Summary")
-    startup_overview: Optional[str] = Field(default="", description="2. Startup Overview")
-    problem_statement: Optional[str] = Field(default="", description="3. Problem Statement")
-    proposed_solution: Optional[str] = Field(default="", description="4. Proposed Solution")
-    target_customers: Optional[str] = Field(default="", description="5. Target Customers")
-    industry: Optional[str] = Field(default="", description="6. Industry")
-    business_model: Optional[str] = Field(default="", description="7. Business Model")
-    market_research: Optional[str] = Field(default="", description="8. Market Research")
-    market_trends: List[str] = Field(default_factory=list, description="9. Market Trends")
-    competitor_analysis: Dict[str, Any] = Field(default_factory=dict, description="10. Competitor Analysis")
+    executive_summary: str | None = Field(default="", description="1. Executive Summary")
+    startup_overview: str | None = Field(default="", description="2. Startup Overview")
+    problem_statement: str | None = Field(default="", description="3. Problem Statement")
+    proposed_solution: str | None = Field(default="", description="4. Proposed Solution")
+    target_customers: str | None = Field(default="", description="5. Target Customers")
+    industry: str | None = Field(default="", description="6. Industry")
+    business_model: str | None = Field(default="", description="7. Business Model")
+    market_research: str | None = Field(default="", description="8. Market Research")
+    market_trends: list[str] = Field(default_factory=list, description="9. Market Trends")
+    competitor_analysis: dict[str, Any] = Field(default_factory=dict, description="10. Competitor Analysis")
     swot_analysis: SWOTAnalysis = Field(default_factory=SWOTAnalysis, description="11. SWOT Analysis")
-    opportunities: List[str] = Field(default_factory=list, description="12. Opportunities")
-    risks: List[str] = Field(default_factory=list, description="13. Risks")
-    recommendations: List[str] = Field(default_factory=list, description="14. Recommendations")
+    opportunities: list[str] = Field(default_factory=list, description="12. Opportunities")
+    risks: list[str] = Field(default_factory=list, description="13. Risks")
+    recommendations: list[str] = Field(default_factory=list, description="14. Recommendations")
     overall_validation_score: float = Field(default=0.0, description="15. Overall Validation Score")
     final_conclusion: str = Field(default="", description="16. Final Conclusion")
 
     # Supporting & Backward-Compatibility Fields
-    idea_overview: Optional[str] = Field(default="", description="Alias for Startup Overview")
-    market_analysis: Dict[str, Any] = Field(default_factory=dict, description="Market Analysis")
+    idea_overview: str | None = Field(default="", description="Alias for Startup Overview")
+    market_analysis: dict[str, Any] = Field(default_factory=dict, description="Market Analysis")
     problem_solution_fit: str = Field(
         default="",
         description="Evaluation of customer pain alignment and solution defensibility",
     )
-    market_potential: Dict[str, Any] = Field(
+    market_potential: dict[str, Any] = Field(
         default_factory=dict,
         description="Market sizing, TAM/SAM/SOM breakdown, and growth CAGR",
     )
-    competitors: List[str] = Field(
+    competitors: list[str] = Field(
         default_factory=list,
         description="Identified competitor names",
     )
     swot: SWOTAnalysis = Field(default_factory=SWOTAnalysis)
-    business_opportunities: List[str] = Field(default_factory=list, description="Alias for Opportunities")
-    business_risks: List[str] = Field(default_factory=list, description="Alias for Risks")
-    potential_risks: List[str] = Field(default_factory=list, description="Alias for Risks")
-    growth_opportunities: List[str] = Field(default_factory=list, description="Alias for Opportunities")
+    business_opportunities: list[str] = Field(default_factory=list, description="Alias for Opportunities")
+    business_risks: list[str] = Field(default_factory=list, description="Alias for Risks")
+    potential_risks: list[str] = Field(default_factory=list, description="Alias for Risks")
+    growth_opportunities: list[str] = Field(default_factory=list, description="Alias for Opportunities")
     summary: str = Field(default="", description="Executive synthesis of the evaluation")
-    market_sizing: Dict[str, str] = Field(
+    market_sizing: dict[str, str] = Field(
         default_factory=dict,
         description="Legacy TAM, SAM, SOM mapping",
     )
@@ -198,4 +199,4 @@ class MarketSearchResponse(BaseModel):
     """Consolidated market search results."""
     query: str
     total_results: int
-    results: List[MarketSearchResultItem] = Field(default_factory=list)
+    results: list[MarketSearchResultItem] = Field(default_factory=list)

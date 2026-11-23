@@ -11,9 +11,9 @@ Milestone Notes:
       (e.g., Datadog, CloudWatch, or Render Log Streams).
 """
 
+import logging
 import os
 import sys
-import logging
 
 # Ensure backend root directory is in sys.path
 _current_dir = os.path.dirname(os.path.abspath(__file__))

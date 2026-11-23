@@ -20,13 +20,12 @@ _backend_dir = os.path.abspath(os.path.join(_current_dir, ".."))
 if _backend_dir not in sys.path:
     sys.path.insert(0, _backend_dir)
 
-from fastapi import FastAPI, status
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-
+from app.api.routes import health_router, idea_router, search_router
 from app.core.config import settings
 from app.core.logging import logger
-from app.api.routes import health_router, idea_router, search_router
+from fastapi import FastAPI, HTTPException, Request, status
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 
 @asynccontextmanager
@@ -76,6 +75,15 @@ def create_application() -> FastAPI:
     app.include_router(health_router, prefix=settings.API_PREFIX)
     app.include_router(idea_router, prefix=settings.API_PREFIX)
     app.include_router(search_router, prefix=settings.API_PREFIX)
+
+    # Standardized Exception Handling for Clean JSON Error Envelopes
+    @app.exception_handler(HTTPException)
+    async def http_exception_handler(_: Request, exc: HTTPException):
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={"error": exc.detail},
+            headers=exc.headers,
+        )
 
     # Root Endpoint
     @app.get(

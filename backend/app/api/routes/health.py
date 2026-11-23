@@ -12,8 +12,8 @@ Milestone Notes:
 
 import os
 import sys
-from datetime import datetime, timezone
-from typing import Dict, Any
+from datetime import UTC, datetime
+from typing import Any
 
 # Ensure backend root directory is in sys.path
 _current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -21,26 +21,26 @@ _backend_dir = os.path.abspath(os.path.join(_current_dir, "../../.."))
 if _backend_dir not in sys.path:
     sys.path.insert(0, _backend_dir)
 
-from fastapi import APIRouter, status
 from app.core.config import settings
+from fastapi import APIRouter, status
 
 router = APIRouter(prefix="/health", tags=["Health"])
 
 
 @router.get(
     "/",
-    response_model=Dict[str, Any],
+    response_model=dict[str, Any],
     status_code=status.HTTP_200_OK,
     summary="Service Health Check",
     response_description="Returns runtime status and server environment",
 )
 @router.get(
     "",
-    response_model=Dict[str, Any],
+    response_model=dict[str, Any],
     status_code=status.HTTP_200_OK,
     include_in_schema=False,
 )
-def check_health() -> Dict[str, Any]:
+def check_health() -> dict[str, Any]:
     """
     Performs basic liveness probe verifying that the FastAPI ASGI application
     is running and responsive.
@@ -50,7 +50,7 @@ def check_health() -> Dict[str, Any]:
         "app_name": settings.APP_NAME,
         "environment": settings.ENVIRONMENT,
         "version": "1.0.0",
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
     }
 
 

@@ -10,10 +10,10 @@ Milestone Notes:
       with TTL caching and semantic indexing.
 """
 
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Any, Dict, Optional
 import uuid
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from typing import Any
 
 
 @dataclass
@@ -27,13 +27,13 @@ class SearchResultCache:
     query: str
     snippet: str
     id: str = field(default_factory=lambda: f"search_{uuid.uuid4().hex[:8]}")
-    idea_id: Optional[str] = None
-    source_url: Optional[str] = None
-    title: Optional[str] = None
+    idea_id: str | None = None
+    source_url: str | None = None
+    title: str | None = None
     relevance_score: float = 0.0
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert entity to standard Python dictionary."""
         return {
             "id": self.id,
