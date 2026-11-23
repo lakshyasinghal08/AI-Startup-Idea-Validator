@@ -41,6 +41,26 @@ def _extract_paths(fastapi_app):
     return list(paths)
 
 
+MOCK_EXTRACTED_IDEA = {
+    "startup_name": "CleanRoute AI",
+    "industry": "Logistics & Fleet Operations",
+    "problem_statement": "Green fleet management using AI routing to reduce carbon footprint for freight.",
+    "proposed_solution": "Autonomous IoT cold chain temperature tracking and route optimization.",
+    "target_customers": "Freight Dispatchers",
+    "business_model": "Monthly SaaS Subscription",
+    "value_proposition": "Automated route optimization reducing fuel usage by 20%.",
+}
+
+MOCK_SEARCH_RESULTS = [
+    {
+        "title": "CleanRoute Overview",
+        "url": "https://example.com/cleanroute",
+        "content": "CleanRoute provides automated freight route optimization.",
+        "score": 0.92,
+    }
+]
+
+
 class TestHealthAndRoutes(unittest.TestCase):
     """
     Test cases verifying API contracts, response models, and status envelopes.
@@ -56,7 +76,9 @@ class TestHealthAndRoutes(unittest.TestCase):
         self.assertIn("version", result)
         self.assertIn("timestamp", result)
 
-    def test_idea_validation_controller(self):
+    @patch("app.api.routes.idea.idea_agent.extract_idea", return_value=MOCK_EXTRACTED_IDEA)
+    @patch("app.api.routes.idea.search_agent.execute", return_value=MOCK_SEARCH_RESULTS)
+    def test_idea_validation_controller(self, mock_search, mock_extract):
         """Verify POST /api/v1/idea/validate processes valid payload and returns structured SWOT."""
         request_payload = IdeaCreateRequest(
             title="CleanRoute AI",
@@ -80,7 +102,9 @@ class TestHealthAndRoutes(unittest.TestCase):
         self.assertGreater(len(response.data.swot.threats), 0)
         self.assertIn("tam", response.data.market_sizing)
 
-    def test_single_input_idea_validation(self):
+    @patch("app.api.routes.idea.idea_agent.extract_idea", return_value=MOCK_EXTRACTED_IDEA)
+    @patch("app.api.routes.idea.search_agent.execute", return_value=MOCK_SEARCH_RESULTS)
+    def test_single_input_idea_validation(self, mock_search, mock_extract):
         """Verify POST /api/v1/idea/validate processes single raw text input."""
         payload = IdeaCreateRequest(
             idea="I want to build an AI platform that helps students prepare for interviews."
@@ -178,7 +202,9 @@ def test_pytest_health():
     assert "version" in data
 
 
-def test_pytest_idea_validation():
+@patch("app.api.routes.idea.idea_agent.extract_idea", return_value=MOCK_EXTRACTED_IDEA)
+@patch("app.api.routes.idea.search_agent.execute", return_value=MOCK_SEARCH_RESULTS)
+def test_pytest_idea_validation(mock_search, mock_extract):
     """Pytest hook for idea validation endpoint verification."""
     payload = IdeaCreateRequest(
         title="EcoLogix Cargo",

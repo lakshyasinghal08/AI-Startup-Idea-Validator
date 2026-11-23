@@ -141,7 +141,7 @@ class TavilySearchService:
         logger.info("[TavilyService] Starting live search.")
 
         try:
-            with httpx.Client(timeout=30.0) as client:
+            with httpx.Client(timeout=httpx.Timeout(10.0, connect=3.0)) as client:
                 response = client.post(
                     self.API_URL,
                     json=payload,
