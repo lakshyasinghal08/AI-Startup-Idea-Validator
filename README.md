@@ -390,6 +390,6 @@ Developed as part of the **Infosys Springboard Virtual Internship 7.0**.
 * **Lakshya Singhal** — Project Lead & Full Stack Architect
 * **Poojitha B** — Senior AI & Backend Engineer
 * **Sahil** — Senior Backend & Search Engineer
-* **Supritha** — Senior Frontend & UI/UX Engineer
+* **Supritha N** — Senior Frontend & UI/UX Engineer
 
 **License:** MIT License
