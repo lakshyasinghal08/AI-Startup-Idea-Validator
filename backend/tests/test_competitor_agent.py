@@ -93,7 +93,7 @@ class TestCompetitorAgent(unittest.TestCase):
         self.assertEqual(result["indirect_competitors"], expected_result["indirect_competitors"])
         self.assertEqual(result["comparison_summary"], expected_result["comparison_summary"])
         self.assertEqual(result["market_gaps"], expected_result["market_gaps"])
-        self.assertEqual(result["unique_opportunities"], expected_result["unique_opportunities"])
+        self.assertEqual(result["unique_opportunities"],expected_result["differentiation_opportunities"])
         self.mock_llm.generate_structured_json_sync.assert_called_once()
 
     def test_llm_receives_startup_and_search_context(self):
