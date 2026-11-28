@@ -1,4 +1,3 @@
-
 """Tests for the Competitor Intelligence Agent."""
 
 import unittest

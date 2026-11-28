@@ -36,54 +36,57 @@ class CompetitorAgent:
         search_snippets: list[dict[str, Any]] | dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """
-        Analyzes competitors using startup information and verified Tavily search evidence.
-        Uses real Groq LLM reasoning without fabrication.
+        Analyze competitors using startup information and Tavily evidence.
         """
+        # Validate startup idea
         if not isinstance(extracted_idea, dict):
             raise TypeError("extracted_idea must be a dictionary.")
 
-        startup_name = (
-            extracted_idea.get("startup_name")
-            or extracted_idea.get("title")
-            or "Startup Venture"
-        )
-        industry = (
-            extracted_idea.get("industry")
-            or extracted_idea.get("target_market")
-            or "Technology & Services"
-        )
-        problem = (
-            extracted_idea.get("problem")
-            or extracted_idea.get("problem_statement")
-            or ""
-        )
-        solution = (
-            extracted_idea.get("solution")
-            or extracted_idea.get("proposed_solution")
-            or ""
-        )
+        startup_name = extracted_idea.get("startup_name", "Startup")
+        industry = extracted_idea.get("industry", "Technology")
 
         logger.info(
             f"[CompetitorAgent] Analyzing competitors for "
             f"'{startup_name}' in '{industry}'"
         )
 
-        # Unpack snippets if wrapped in a dict
-        raw_snippets: list[Any] = []
+        # Normalize dictionary-wrapped search results
         if isinstance(search_snippets, dict):
-            raw_snippets = search_snippets.get("search_results", [])
-        elif isinstance(search_snippets, list):
-            raw_snippets = search_snippets
+            for key in ("results", "search_results", "data"):
+                if isinstance(search_snippets.get(key), list):
+                    search_snippets = search_snippets[key]
+                    break
+            else:
+                # Allow a single search-result dictionary
+                if all(
+                    key in search_snippets
+                    for key in ("title", "url", "content")
+                ):
+                    search_snippets = [search_snippets]
+                else:
+                    search_snippets = []
+
+        if search_snippets is None:
+            search_snippets = []
+
+        if not isinstance(search_snippets, list):
+            raise TypeError(
+                "search_snippets must be a list or dictionary."
+            )
 
         # Prepare relevant search evidence
-        evidence: list[dict[str, Any]] = []
-        for snippet in raw_snippets:
+        evidence = []
+
+        for snippet in search_snippets:
             if not isinstance(snippet, dict):
                 continue
 
             title = snippet.get("title", "")
             url = snippet.get("url", "")
             content = snippet.get("content", "")
+
+            if not isinstance(content, str):
+                continue
 
             if title and url and content:
                 evidence.append({
@@ -176,7 +179,7 @@ search evidence.
         user_prompt = f"""Analyze the competitive landscape for this startup.
 
 STARTUP INFORMATION:
-{json.dumps(startup_context, indent=2, ensure_ascii=False)}
+{json.dumps(extracted_idea, indent=2, ensure_ascii=False)}
 
 TAVILY SEARCH EVIDENCE:
 {json.dumps(evidence, indent=2, ensure_ascii=False)}
