@@ -56,27 +56,51 @@ class SearchAgent:
 
     def execute(
         self,
-        startup_name: str,
-        industry: str,
-        problem_or_solution: str
+        startup_name: str | dict[str, Any],
+        industry: str | None = None,
+        problem_or_solution: str | None = None,
     ) -> list[dict[str, Any]]:
         """
         Execute targeted web research and return genuine Tavily results.
+        Accepts either explicit parameters or a structured Idea JSON dictionary.
         """
+        if isinstance(startup_name, dict):
+            idea_dict = startup_name
+            name = (
+                idea_dict.get("startup_name")
+                or idea_dict.get("title")
+                or "Startup Idea"
+            )
+            ind = (
+                idea_dict.get("industry")
+                or idea_dict.get("target_market")
+                or "Technology & Services"
+            )
+            prob = (
+                idea_dict.get("problem")
+                or idea_dict.get("problem_statement")
+                or idea_dict.get("solution")
+                or idea_dict.get("proposed_solution")
+                or ""
+            )
+        else:
+            name = startup_name
+            ind = industry or ""
+            prob = problem_or_solution or ""
 
-        if not startup_name or not startup_name.strip():
+        if not name or not str(name).strip():
             raise ValueError("Startup name cannot be empty.")
 
-        if not industry or not industry.strip():
+        if not ind or not str(ind).strip():
             raise ValueError("Industry cannot be empty.")
 
-        if not problem_or_solution or not problem_or_solution.strip():
+        if not prob or not str(prob).strip():
             raise ValueError("Problem or solution cannot be empty.")
 
         queries = self._generate_queries(
-            startup_name.strip(),
-            industry.strip(),
-            problem_or_solution.strip()
+            str(name).strip(),
+            str(ind).strip(),
+            str(prob).strip(),
         )
 
         all_results: list[dict[str, Any]] = []
@@ -91,7 +115,7 @@ class SearchAgent:
             try:
                 results = self.search_service.search(
                     query=query,
-                    max_results=5
+                    max_results=5,
                 )
 
                 if not results:
@@ -119,8 +143,7 @@ class SearchAgent:
                     "[SearchAgent] Search query %s failed.", index
                 )
                 raise RuntimeError(
-                    f"Market research failed while executing search query {index}. "
-                    "Please retry when the search service is available."
+                    f"Market research failed while executing search query {index}: {exc!s}"
                 ) from exc
 
         logger.info(
@@ -129,6 +152,32 @@ class SearchAgent:
         )
 
         return all_results
+
+    def search_idea(
+        self,
+        idea: dict[str, Any] | str,
+    ) -> dict[str, Any]:
+        """
+        Standardized entrypoint returning structured search output:
+        {
+            "search_results": list[dict],
+            "sources": list[dict],
+            "urls": list[str]
+        }
+        """
+        results = self.execute(idea)
+        sources = [
+            {"title": r.get("title", ""), "url": r.get("url", "")}
+            for r in results
+            if r.get("url")
+        ]
+        urls = [r.get("url", "") for r in results if r.get("url")]
+
+        return {
+            "search_results": results,
+            "sources": sources,
+            "urls": urls,
+        }
 
 
 # Singleton instance

@@ -60,6 +60,42 @@ MOCK_SEARCH_RESULTS = [
     }
 ]
 
+MOCK_MARKET_DATA = {
+    "industry": "Logistics & Fleet Operations",
+    "market_size": "$14.2B Global Logistics Software",
+    "growth_rate": "12.4% CAGR",
+    "customer_segments": ["Mid-market Fleet Operators", "Freight Dispatchers"],
+    "trends": ["Autonomous routing adoption", "Decarbonization tracking"],
+    "opportunities": ["Real-time emissions reporting"],
+    "challenges": ["Incumbent telematics integration"],
+    "tam": "$14.2B Global Market",
+    "sam": "$2.8B Mid-market Segment",
+    "som": "$210M 3-Year Beachhead",
+    "cagr": "12.4%",
+    "demand_drivers": "High diesel costs and green fleet mandates",
+    "market_demand_score": 84.0,
+}
+
+MOCK_COMPETITOR_DATA = {
+    "direct_competitors": [
+        {
+            "name": "Route4Me",
+            "strengths": ["Established routing network"],
+            "weaknesses": ["Legacy user interface"],
+            "features": ["Dynamic dispatch"],
+            "pricing": "$149/mo",
+            "source_urls": ["https://example.com/route4me"],
+        }
+    ],
+    "indirect_competitors": [],
+    "strengths": ["AI-driven carbon optimization"],
+    "weaknesses": ["Early-stage brand"],
+    "market_gaps": ["Affordable emissions reduction for freight"],
+    "risks": ["Established telematics players adding routing"],
+    "unique_opportunities": ["Proprietary green routing models"],
+    "comparison_summary": "CleanRoute provides specialized carbon-optimized routing.",
+}
+
 
 class TestHealthAndRoutes(unittest.TestCase):
     """
@@ -76,10 +112,12 @@ class TestHealthAndRoutes(unittest.TestCase):
         self.assertIn("version", result)
         self.assertIn("timestamp", result)
 
+    @patch("app.api.routes.idea.competitor_agent.execute", return_value=MOCK_COMPETITOR_DATA)
+    @patch("app.api.routes.idea.market_agent.execute", return_value=MOCK_MARKET_DATA)
     @patch("app.api.routes.idea.llm_service.is_configured", return_value=True)
     @patch("app.api.routes.idea.idea_agent.extract_idea", return_value=MOCK_EXTRACTED_IDEA)
     @patch("app.api.routes.idea.search_agent.execute", return_value=MOCK_SEARCH_RESULTS)
-    def test_idea_validation_controller(self, mock_config,mock_extract,mock_search):
+    def test_idea_validation_controller(self, mock_search, mock_extract, mock_config, mock_market, mock_comp):
         """Verify POST /api/v1/idea/validate processes valid payload and returns structured SWOT."""
         request_payload = IdeaCreateRequest(
             title="CleanRoute AI",
@@ -103,10 +141,12 @@ class TestHealthAndRoutes(unittest.TestCase):
         self.assertGreater(len(response.data.swot.threats), 0)
         self.assertIn("tam", response.data.market_sizing)
 
+    @patch("app.api.routes.idea.competitor_agent.execute", return_value=MOCK_COMPETITOR_DATA)
+    @patch("app.api.routes.idea.market_agent.execute", return_value=MOCK_MARKET_DATA)
     @patch("app.api.routes.idea.idea_agent.extract_idea", return_value=MOCK_EXTRACTED_IDEA)
     @patch("app.api.routes.idea.search_agent.execute", return_value=MOCK_SEARCH_RESULTS)
     @patch("app.api.routes.idea.llm_service.is_configured", return_value=True)
-    def test_single_input_idea_validation(self, mock_config, mock_search, mock_extract):
+    def test_single_input_idea_validation(self, mock_config, mock_search, mock_extract, mock_market, mock_comp):
         """Verify POST /api/v1/idea/validate processes single raw text input."""
         payload = IdeaCreateRequest(
             idea="I want to build an AI platform that helps students prepare for interviews."
@@ -118,6 +158,8 @@ class TestHealthAndRoutes(unittest.TestCase):
         assert response.data is not None
         self.assertEqual(response.data.status, "completed")
         self.assertGreater(response.data.overall_validation_score, 0.0)
+        self.assertIsNotNone(response.data.executive_summary)
+        self.assertIsNotNone(response.data.market_research)
         self.assertIsNotNone(response.data.executive_summary)
         self.assertIsNotNone(response.data.market_research)
 
@@ -203,10 +245,12 @@ def test_pytest_health():
     assert data["status"] == "healthy"
     assert "version" in data
 
+@patch("app.api.routes.idea.competitor_agent.execute", return_value=MOCK_COMPETITOR_DATA)
+@patch("app.api.routes.idea.market_agent.execute", return_value=MOCK_MARKET_DATA)
 @patch("app.api.routes.idea.idea_agent.extract_idea", return_value=MOCK_EXTRACTED_IDEA)
 @patch("app.api.routes.idea.search_agent.execute", return_value=MOCK_SEARCH_RESULTS)
 @patch("app.api.routes.idea.llm_service.is_configured", return_value=True)
-def test_pytest_idea_validation(mock_config, mock_search, mock_extract):
+def test_pytest_idea_validation(mock_config, mock_search, mock_extract, mock_market, mock_comp):
     """Pytest hook for idea validation endpoint verification."""
     payload = IdeaCreateRequest(
         title="EcoLogix Cargo",

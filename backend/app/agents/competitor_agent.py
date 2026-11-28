@@ -1,4 +1,3 @@
-
 """
 Competitor Intelligence Agent
 =============================
@@ -8,9 +7,9 @@ Purpose:
     and LLM analysis.
 """
 
+import json
 import os
 import sys
-import json
 from typing import Any
 
 # Ensure backend root directory is in sys.path
@@ -21,11 +20,12 @@ if _backend_dir not in sys.path:
     sys.path.insert(0, _backend_dir)
 
 from app.core.logging import logger
+from app.prompt import COMPETITOR_ANALYSIS_PROMPT
 from app.services.llm_service import LLMService, llm_service
 
 
 class CompetitorAgent:
-    """Agent for evidence-based competitor discovery and comparison."""
+    """Agent for evidence-based competitor discovery, benchmarking, and moat identification."""
 
     def __init__(self, service: LLMService | None = None):
         self.llm_service = service or llm_service
@@ -33,24 +33,51 @@ class CompetitorAgent:
     def execute(
         self,
         extracted_idea: dict[str, Any],
-        search_snippets: list[dict[str, Any]] | None = None,
+        search_snippets: list[dict[str, Any]] | dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """
-        Analyzes competitors using startup information and web search evidence.
+        Analyzes competitors using startup information and verified Tavily search evidence.
+        Uses real Groq LLM reasoning without fabrication.
         """
+        if not isinstance(extracted_idea, dict):
+            raise TypeError("extracted_idea must be a dictionary.")
 
-        startup_name = extracted_idea.get("startup_name", "Startup")
-        industry = extracted_idea.get("industry", "Technology")
+        startup_name = (
+            extracted_idea.get("startup_name")
+            or extracted_idea.get("title")
+            or "Startup Venture"
+        )
+        industry = (
+            extracted_idea.get("industry")
+            or extracted_idea.get("target_market")
+            or "Technology & Services"
+        )
+        problem = (
+            extracted_idea.get("problem")
+            or extracted_idea.get("problem_statement")
+            or ""
+        )
+        solution = (
+            extracted_idea.get("solution")
+            or extracted_idea.get("proposed_solution")
+            or ""
+        )
 
         logger.info(
             f"[CompetitorAgent] Analyzing competitors for "
             f"'{startup_name}' in '{industry}'"
         )
 
-        # Prepare relevant search evidence
-        evidence = []
+        # Unpack snippets if wrapped in a dict
+        raw_snippets: list[Any] = []
+        if isinstance(search_snippets, dict):
+            raw_snippets = search_snippets.get("search_results", [])
+        elif isinstance(search_snippets, list):
+            raw_snippets = search_snippets
 
-        for snippet in (search_snippets or []):
+        # Prepare relevant search evidence
+        evidence: list[dict[str, Any]] = []
+        for snippet in raw_snippets:
             if not isinstance(snippet, dict):
                 continue
 
@@ -60,9 +87,9 @@ class CompetitorAgent:
 
             if title and url and content:
                 evidence.append({
-                    "title": title,
-                    "url": url,
-                    "content": content[:2000],
+                    "title": str(title),
+                    "url": str(url),
+                    "content": str(content)[:2000],
                     "score": snippet.get("score", 0.0),
                 })
 
@@ -146,20 +173,19 @@ Ensure all competitor-specific claims are traceable to the supplied
 search evidence.
 """
 
-        user_prompt = f"""
-Analyze the competitive landscape for this startup.
+        user_prompt = f"""Analyze the competitive landscape for this startup.
 
 STARTUP INFORMATION:
-{json.dumps(extracted_idea, indent=2, ensure_ascii=False)}
+{json.dumps(startup_context, indent=2, ensure_ascii=False)}
 
 TAVILY SEARCH EVIDENCE:
 {json.dumps(evidence, indent=2, ensure_ascii=False)}
 
 Identify relevant direct and indirect competitors and compare them.
-Ensure every competitor-specific claim is supported by the evidence.
+Ensure every competitor-specific claim, feature, and pricing detail is supported by the evidence.
+If pricing is not stated in the sources, write 'Not available in sources'.
 """
 
-        # Generate structured competitor analysis using the LLM
         result = self.llm_service.generate_structured_json_sync(
             system_prompt=system_prompt,
             user_prompt=user_prompt,
@@ -167,15 +193,66 @@ Ensure every competitor-specific claim is supported by the evidence.
         )
 
         if not isinstance(result, dict):
-            raise ValueError(
-                "Competitor analysis returned an invalid response."
-            )
+            raise TypeError("Competitor analysis returned an invalid response from LLM.")
 
-        logger.info(
-            f"[CompetitorAgent] Analysis completed for '{startup_name}'."
+        # Standardize competitor output structure
+        direct_competitors = result.get("direct_competitors") or []
+        if not isinstance(direct_competitors, list):
+            direct_competitors = []
+
+        indirect_competitors = result.get("indirect_competitors") or []
+        if not isinstance(indirect_competitors, list):
+            indirect_competitors = []
+
+        strengths = result.get("strengths") or []
+        if isinstance(strengths, str):
+            strengths = [strengths]
+
+        weaknesses = result.get("weaknesses") or []
+        if isinstance(weaknesses, str):
+            weaknesses = [weaknesses]
+
+        market_gaps = result.get("market_gaps") or []
+        if isinstance(market_gaps, str):
+            market_gaps = [market_gaps]
+
+        risks = result.get("risks") or result.get("competitive_risks") or []
+        if isinstance(risks, str):
+            risks = [risks]
+
+        unique_opportunities = (
+            result.get("unique_opportunities")
+            or result.get("differentiation_opportunities")
+            or []
+        )
+        if isinstance(unique_opportunities, str):
+            unique_opportunities = [unique_opportunities]
+
+        comparison_summary = (
+            result.get("comparison_summary")
+            or f"Competitive benchmarking completed for {startup_name} in {industry}."
         )
 
-        return result
+        defensive_moats = result.get("defensive_moats") or []
+        if isinstance(defensive_moats, str):
+            defensive_moats = [defensive_moats]
+
+        standardized_output = {
+            "direct_competitors": direct_competitors,
+            "indirect_competitors": indirect_competitors,
+            "strengths": strengths,
+            "weaknesses": weaknesses,
+            "market_gaps": market_gaps,
+            "risks": risks,
+            "unique_opportunities": unique_opportunities,
+            "comparison_summary": comparison_summary,
+            "competitive_risks": risks,
+            "differentiation_opportunities": unique_opportunities,
+            "defensive_moats": defensive_moats,
+        }
+
+        logger.info(f"[CompetitorAgent] Analysis completed successfully for '{startup_name}'.")
+        return standardized_output
 
 
 # Singleton instance
@@ -183,8 +260,6 @@ competitor_agent = CompetitorAgent()
 
 
 if __name__ == "__main__":
-    agent = CompetitorAgent()
-
     sample_idea = {
         "startup_name": "PrepAI",
         "industry": "EdTech",
@@ -192,5 +267,6 @@ if __name__ == "__main__":
         "proposed_solution": "AI-powered interview preparation platform.",
         "target_customers": "College students and graduates",
     }
-
+    agent = CompetitorAgent()
+    print("CompetitorAgent test run:")
     print(agent.execute(sample_idea, []))
