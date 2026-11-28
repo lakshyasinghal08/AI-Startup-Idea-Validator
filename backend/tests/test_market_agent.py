@@ -33,42 +33,22 @@ SAMPLE_SNIPPETS = [
 
 MOCK_LLM_RESPONSE = {
     "industry": "EdTech",
-    "market_size": {
-        "tam": "Not available in sources",
-        "sam": "Not available in sources",
-        "som": "Not available in sources",
-        "cagr": "15.8% CAGR",
-    },
-    "market_trends": [
-        {
-            "trend": "AI tutoring and interview simulator adoption",
-            "impact": "Increases demand from students and university career centers.",
-            "source_urls": [
-                "https://example.com/edtech-market-2026",
-                "https://example.com/career-prep",
-            ],
-        }
-    ],
-    "demand_drivers": ["Scaling interview coaching for graduates"],
-    "target_segments": [
-        {
-            "segment_name": "Final-Year CS Students",
-            "profile": "Undergraduate engineering students preparing for campus placements.",
-            "pain_points": ["Lack of personalized mock interview feedback"],
-            "willingness_to_pay": "Medium - willing to pay for placement-season subscriptions",
-            "priority": "Primary",
-        }
-    ],
-    "market_opportunity_summary": "Strong growth driven by AI adoption in career preparation.",
-    "market_risks": ["High competition from free interview prep resources"],
-    "source_urls": [
-        "https://example.com/edtech-market-2026",
-        "https://example.com/career-prep",
-    ],
+    "market_size": "$8.5B Global EdTech Market",
+    "growth_rate": "15.8% CAGR",
+    "customer_segments": ["Final-Year CS Students", "University Career Centers"],
+    "trends": ["AI tutoring and interview simulator adoption"],
+    "opportunities": ["Scaling mock interview coaching for graduates"],
+    "challenges": ["Competition from free interview prep platforms"],
+    "demand_indicators": ["Rising campus placement prep spending"],
+    "tam": "$8.5B",
+    "sam": "$1.9B",
+    "som": "$140M",
+    "cagr": "15.8% CAGR",
+    "market_demand_score": 85.0,
 }
 
 
-def test_market_agent_returns_structured_analysis():
+def test_market_agent_returns_standardized_analysis():
     mock_llm = MagicMock()
     mock_llm.generate_structured_json_sync.return_value = MOCK_LLM_RESPONSE
 
@@ -76,10 +56,11 @@ def test_market_agent_returns_structured_analysis():
     result = agent.execute(SAMPLE_IDEA, SAMPLE_SNIPPETS)
 
     assert result["industry"] == "EdTech"
-    assert result["market_size"]["cagr"] == "15.8% CAGR"
-    assert len(result["market_trends"]) == 1
-    assert len(result["target_segments"]) == 1
-    assert result["target_segments"][0]["priority"] == "Primary"
+    assert result["cagr"] == "15.8% CAGR"
+    assert len(result["trends"]) == 1
+    assert len(result["customer_segments"]) == 2
+    assert "https://example.com/edtech-market-2026" in result["source_urls"]
+    assert result["market_demand_score"] == 85.0
 
     mock_llm.generate_structured_json_sync.assert_called_once()
     call_kwargs = mock_llm.generate_structured_json_sync.call_args.kwargs
@@ -87,15 +68,15 @@ def test_market_agent_returns_structured_analysis():
     assert "https://example.com/edtech-market-2026" in call_kwargs["user_prompt"]
 
 
-def test_market_agent_handles_empty_search_snippets():
+def test_market_agent_accepts_dict_wrapped_search_results():
     mock_llm = MagicMock()
     mock_llm.generate_structured_json_sync.return_value = MOCK_LLM_RESPONSE
 
     agent = MarketAgent(service=mock_llm)
-    result = agent.execute(SAMPLE_IDEA, [])
+    result = agent.execute(SAMPLE_IDEA, {"search_results": SAMPLE_SNIPPETS})
 
     assert isinstance(result, dict)
-    mock_llm.generate_structured_json_sync.assert_called_once()
+    assert "https://example.com/edtech-market-2026" in result["source_urls"]
 
 
 def test_market_agent_filters_malformed_snippets():
@@ -120,7 +101,10 @@ def test_market_agent_raises_on_invalid_idea_input():
     mock_llm = MagicMock()
     agent = MarketAgent(service=mock_llm)
 
-    with pytest.raises(ValueError, match="extracted_idea must be a non-empty dictionary"):
+    with pytest.raises(TypeError, match="dictionary"):
+        agent.execute("not-a-dict", SAMPLE_SNIPPETS)
+
+    with pytest.raises(ValueError, match="non-empty dictionary"):
         agent.execute({}, SAMPLE_SNIPPETS)
 
 
@@ -130,20 +114,17 @@ def test_market_agent_raises_on_invalid_llm_response():
 
     agent = MarketAgent(service=mock_llm)
 
-    with pytest.raises(ValueError, match="invalid response"):
+    with pytest.raises(TypeError, match="invalid response"):
         agent.execute(SAMPLE_IDEA, SAMPLE_SNIPPETS)
 
 
-def test_market_agent_raises_on_missing_required_keys():
+def test_market_agent_raises_on_missing_required_fields():
     mock_llm = MagicMock()
-    mock_llm.generate_structured_json_sync.return_value = {
-        "industry": "EdTech",
-        "market_size": {"cagr": "15.8% CAGR"},
-    }
+    mock_llm.generate_structured_json_sync.return_value = {"industry": "EdTech"}
 
     agent = MarketAgent(service=mock_llm)
 
-    with pytest.raises(ValueError, match="missing required keys"):
+    with pytest.raises(ValueError, match="missing required"):
         agent.execute(SAMPLE_IDEA, SAMPLE_SNIPPETS)
 
 

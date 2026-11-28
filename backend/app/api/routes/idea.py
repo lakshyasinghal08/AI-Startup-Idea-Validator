@@ -35,7 +35,7 @@ from app.schemas.idea_schema import (
 )
 from app.schemas.response_schema import ApiResponse
 from app.services.llm_service import LLMConfigurationError, llm_service
-from app.services.tavily_service import TavilyConfigurationError, tavily_service
+from app.services.tavily_service import TavilyConfigurationError
 from app.utils.helpers import generate_short_id
 from fastapi import APIRouter, HTTPException, status
 
@@ -133,16 +133,22 @@ def validate_idea(payload: IdeaCreateRequest) -> ApiResponse[IdeaValidationRespo
     # Step 3: Market Analysis Agent
     try:
         market_data = market_agent.execute(consolidated_idea, search_snippets)
-    except Exception as e:  # noqa: BLE001
-        logger.warning(f"[IdeaRoute] MarketAgent execution error: {e}. Using fallback.")
-        market_data = {}
+    except Exception as e:
+        logger.exception("[IdeaRoute] MarketAgent execution error: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Market analysis failed: {e!s}",
+        ) from e
 
     # Step 4: Competitor Intelligence Agent
     try:
         competitor_data = competitor_agent.execute(consolidated_idea, search_snippets)
-    except Exception as e:  # noqa: BLE001
-        logger.warning(f"[IdeaRoute] CompetitorAgent execution error: {e}. Using fallback.")
-        competitor_data = {}
+    except Exception as e:
+        logger.exception("[IdeaRoute] CompetitorAgent execution error: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Competitor analysis failed: {e!s}",
+        ) from e
 
     # Step 5: SWOT Analysis Agent
     try:

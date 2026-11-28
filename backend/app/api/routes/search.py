@@ -13,8 +13,7 @@ Milestone Notes:
 
 import os
 import sys
-from fastapi import APIRouter,status, HTTPException
-from app.schemas.response_schema import ApiResponse
+
 _current_dir = os.path.dirname(os.path.abspath(__file__))
 _backend_dir = os.path.abspath(os.path.join(_current_dir, "../../.."))
 
@@ -27,14 +26,13 @@ from app.schemas.idea_schema import (
     MarketSearchResponse,
     MarketSearchResultItem,
 )
+from app.schemas.response_schema import ApiResponse
 from app.services.tavily_service import (
     TavilyConfigurationError,
     TavilySearchError,
-    TavilyConfigurationError,
     tavily_service,
 )
-from app.core.logging import logger
-
+from fastapi import APIRouter, HTTPException, status
 
 router = APIRouter(prefix="/search", tags=["Market Search"])
 
