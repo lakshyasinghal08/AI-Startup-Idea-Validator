@@ -38,7 +38,7 @@ class IdeaAgent:
         result = self.llm_service.extract_startup_details(raw_idea)
 
         if not isinstance(result, dict):
-            raise RuntimeError(
+            raise TypeError(
                 "Startup idea extraction failed because the LLM "
                 "returned an invalid response."
             )
@@ -124,7 +124,7 @@ startup assumptions. Explain weaknesses and provide actionable recommendations.
             )
 
             if not isinstance(result, dict):
-                raise ValueError("LLM returned an invalid evaluation format.")
+                raise TypeError("LLM returned an invalid evaluation format.")
 
             score_fields = [
                 "feasibility_score",
@@ -187,7 +187,7 @@ startup assumptions. Explain weaknesses and provide actionable recommendations.
 
             return evaluation
 
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.exception("[IdeaAgent] AI evaluation failed: %s", exc)
 
             raise RuntimeError(

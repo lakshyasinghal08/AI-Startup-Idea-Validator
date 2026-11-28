@@ -200,3 +200,61 @@ class MarketSearchResponse(BaseModel):
     query: str
     total_results: int
     results: list[MarketSearchResultItem] = Field(default_factory=list)
+
+
+# ==============================================================================
+# Standardized Agent Output Schemas (Milestone 2 Architecture)
+# ==============================================================================
+
+class IdeaAgentOutput(BaseModel):
+    """Standardized output schema for Idea Agent."""
+    industry: str
+    problem: str
+    solution: str
+    target_users: str
+    business_model: str
+    startup_name: str | None = None
+    value_proposition: str | None = None
+
+
+class SearchAgentOutput(BaseModel):
+    """Standardized output schema for Search Agent."""
+    search_results: list[dict[str, Any]] = Field(default_factory=list)
+    sources: list[dict[str, str]] = Field(default_factory=list)
+    urls: list[str] = Field(default_factory=list)
+
+
+class MarketAgentOutput(BaseModel):
+    """Standardized output schema for Market Agent."""
+    industry: str
+    market_size: str
+    growth_rate: str
+    customer_segments: list[str] = Field(default_factory=list)
+    trends: list[str] = Field(default_factory=list)
+    opportunities: list[str] = Field(default_factory=list)
+    challenges: list[str] = Field(default_factory=list)
+    target_audience: str | None = None
+    demand_indicators: list[str] = Field(default_factory=list)
+
+
+class CompetitorDetail(BaseModel):
+    """Structured details for a single competitor."""
+    name: str
+    strengths: list[str] = Field(default_factory=list)
+    weaknesses: list[str] = Field(default_factory=list)
+    features: list[str] = Field(default_factory=list)
+    pricing: str | None = "Not available in sources"
+    source_urls: list[str] = Field(default_factory=list)
+
+
+class CompetitorAgentOutput(BaseModel):
+    """Standardized output schema for Competitor Agent."""
+    direct_competitors: list[CompetitorDetail | dict[str, Any]] = Field(default_factory=list)
+    indirect_competitors: list[CompetitorDetail | dict[str, Any]] = Field(default_factory=list)
+    strengths: list[str] = Field(default_factory=list)
+    weaknesses: list[str] = Field(default_factory=list)
+    market_gaps: list[str] = Field(default_factory=list)
+    risks: list[str] = Field(default_factory=list)
+    unique_opportunities: list[str] = Field(default_factory=list)
+    comparison_summary: str | None = None
+
