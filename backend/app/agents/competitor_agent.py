@@ -2,9 +2,9 @@
 Competitor Intelligence Agent
 =============================
 Purpose:
-    Identifies direct and indirect competitors, benchmarks their strengths,
-    weaknesses, features, and pricing models, and discovers market gaps and defensible
-    moats using verified Tavily search evidence and Groq LLM reasoning.
+    Identifies direct and indirect competitors, compares their strengths
+    and weaknesses, and discovers market gaps using Tavily evidence
+    and LLM analysis.
 """
 
 import json
@@ -36,54 +36,57 @@ class CompetitorAgent:
         search_snippets: list[dict[str, Any]] | dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """
-        Analyzes competitors using startup information and verified Tavily search evidence.
-        Uses real Groq LLM reasoning without fabrication.
+        Analyze competitors using startup information and Tavily evidence.
         """
+        # Validate startup idea
         if not isinstance(extracted_idea, dict):
             raise TypeError("extracted_idea must be a dictionary.")
 
-        startup_name = (
-            extracted_idea.get("startup_name")
-            or extracted_idea.get("title")
-            or "Startup Venture"
-        )
-        industry = (
-            extracted_idea.get("industry")
-            or extracted_idea.get("target_market")
-            or "Technology & Services"
-        )
-        problem = (
-            extracted_idea.get("problem")
-            or extracted_idea.get("problem_statement")
-            or ""
-        )
-        solution = (
-            extracted_idea.get("solution")
-            or extracted_idea.get("proposed_solution")
-            or ""
-        )
+        startup_name = extracted_idea.get("startup_name", "Startup")
+        industry = extracted_idea.get("industry", "Technology")
 
         logger.info(
             f"[CompetitorAgent] Analyzing competitors for "
             f"'{startup_name}' in '{industry}'"
         )
 
-        # Unpack snippets if wrapped in a dict
-        raw_snippets: list[Any] = []
+        # Normalize dictionary-wrapped search results
         if isinstance(search_snippets, dict):
-            raw_snippets = search_snippets.get("search_results", [])
-        elif isinstance(search_snippets, list):
-            raw_snippets = search_snippets
+            for key in ("results", "search_results", "data"):
+                if isinstance(search_snippets.get(key), list):
+                    search_snippets = search_snippets[key]
+                    break
+            else:
+                # Allow a single search-result dictionary
+                if all(
+                    key in search_snippets
+                    for key in ("title", "url", "content")
+                ):
+                    search_snippets = [search_snippets]
+                else:
+                    search_snippets = []
+
+        if search_snippets is None:
+            search_snippets = []
+
+        if not isinstance(search_snippets, list):
+            raise TypeError(
+                "search_snippets must be a list or dictionary."
+            )
 
         # Prepare relevant search evidence
-        evidence: list[dict[str, Any]] = []
-        for snippet in raw_snippets:
+        evidence = []
+
+        for snippet in search_snippets:
             if not isinstance(snippet, dict):
                 continue
 
             title = snippet.get("title", "")
             url = snippet.get("url", "")
             content = snippet.get("content", "")
+
+            if not isinstance(content, str):
+                continue
 
             if title and url and content:
                 evidence.append({
@@ -94,21 +97,89 @@ class CompetitorAgent:
                 })
 
         if not evidence:
-            logger.warning("[CompetitorAgent] No search evidence available for competitor analysis.")
+            logger.warning(
+                "[CompetitorAgent] No search evidence available."
+            )
 
-        system_prompt = COMPETITOR_ANALYSIS_PROMPT
+        system_prompt = """
+You are an experienced startup competitive intelligence analyst.
 
-        startup_context = {
-            "startup_name": startup_name,
-            "industry": industry,
-            "problem": problem,
-            "solution": solution,
+Your task is to identify direct and indirect competitors, compare their
+offerings, analyze market gaps, and identify differentiation opportunities
+using the supplied startup information and web search evidence.
+
+IMPORTANT RULES:
+1. Use only the supplied search evidence for competitor-specific facts.
+2. Never invent competitor names, websites, features, pricing, or statistics.
+3. Classify competitors as direct or indirect based on their relevance.
+4. If information is unavailable, write "Not available in sources".
+5. Include source URLs only when they appear in the supplied evidence.
+6. Do not treat the startup being evaluated as its own competitor.
+7. Compare competitors using the same relevant criteria wherever possible.
+8. Do not assume a competitor lacks a feature just because it is not
+   mentioned in the supplied search results.
+9. Distinguish verified facts from potential market opportunities.
+10. Base market gaps on evidence of unmet customer needs or limitations.
+11. Return valid JSON only, without Markdown formatting.
+
+Use this exact JSON structure:
+
+{
+    "direct_competitors": [
+        {
+            "name": "Competitor name",
+            "strengths": ["Evidence-based strength"],
+            "weaknesses_or_gaps": ["Evidence-based weakness or Not available in sources"],
+            "source_urls": ["Source URL"]
         }
+    ],
+    "indirect_competitors": [
+        {
+            "name": "Competitor name",
+            "strengths": ["Evidence-based strength"],
+            "weaknesses_or_gaps": ["Evidence-based weakness or Not available in sources"],
+            "source_urls": ["Source URL"]
+        }
+    ],
+    "feature_comparison": [
+        {
+            "competitor_name": "Competitor name",
+            "key_features": ["Features supported by evidence"],
+            "target_customers": "Identified customer segment or Not available in sources",
+            "pricing_model": "Pricing information or Not available in sources",
+            "evidence_summary": "Brief evidence-based summary",
+            "source_urls": ["Source URL"]
+        }
+    ],
+    "comparison_summary": "Compare the competitors and explain their relative strengths and positioning.",
+    "market_gaps": [
+        {
+            "gap": "Identified market gap",
+            "unmet_customer_need": "Customer need that is not adequately addressed",
+            "opportunity": "How the startup could address this gap",
+            "supporting_evidence": "Evidence from the supplied search results",
+            "source_urls": ["Source URL"]
+        }
+    ],
+    "competitive_risks": ["Evidence-based competitive risk"],
+    "differentiation_opportunities": ["Realistic opportunity for differentiation"],
+    "defensive_moats": ["Potential defensible advantage"]
+}
+
+If the evidence does not identify competitors, return empty competitor
+lists and explain the limitation in comparison_summary.
+
+If the evidence is insufficient to establish a market gap, return an
+empty market_gaps list rather than inventing one.
+
+Ensure all competitor-specific claims are traceable to the supplied
+search evidence.
+"""
 
         user_prompt = f"""Analyze the competitive landscape for this startup.
 
 STARTUP INFORMATION:
-{json.dumps(startup_context, indent=2, ensure_ascii=False)}
+{json.dumps(extracted_idea, indent=2, ensure_ascii=False)}
 
 TAVILY SEARCH EVIDENCE:
 {json.dumps(evidence, indent=2, ensure_ascii=False)}

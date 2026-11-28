@@ -1,4 +1,3 @@
-
 """Tests for the Competitor Intelligence Agent."""
 
 import unittest
@@ -58,11 +57,28 @@ class TestCompetitorAgent(unittest.TestCase):
                     "source_urls": ["https://example.com/pramp"],
                 }
             ],
-            "strengths": ["AI personalized mock feedback"],
-            "weaknesses": ["Brand awareness in early stage"],
-            "market_gaps": ["Affordable real-time behavioral coaching"],
-            "risks": ["Established competitors"],
-            "unique_opportunities": ["AI-powered personalized feedback"],
+
+            "feature_comparison": [
+                {
+                    "competitor_name": "InterviewBit",
+                    "key_features": ["Coding interview preparation"],
+                    "target_customers": "Students",
+                    "pricing_model": "Not available in sources",
+                    "evidence_summary": "Provides technical interview preparation.",
+                    "source_urls": ["https://example.com/interviewbit"]
+                }
+            ],
+
+            "market_gaps": [
+                {
+                    "gap": "Limited personalized interview feedback",
+                    "unmet_customer_need": "Students need personalized feedback.",
+                    "opportunity": "Provide AI-powered personalized feedback.",
+                    "supporting_evidence": "Potential opportunity requiring further validation.",
+                    "source_urls": ["https://example.com/interviewbit"]
+                }
+            ],
+
             "comparison_summary": "Both platforms support interview preparation.",
             "competitive_risks": ["Established competitors"],
             "differentiation_opportunities": ["AI-powered personalized feedback"],
@@ -77,7 +93,7 @@ class TestCompetitorAgent(unittest.TestCase):
         self.assertEqual(result["indirect_competitors"], expected_result["indirect_competitors"])
         self.assertEqual(result["comparison_summary"], expected_result["comparison_summary"])
         self.assertEqual(result["market_gaps"], expected_result["market_gaps"])
-        self.assertEqual(result["unique_opportunities"], expected_result["unique_opportunities"])
+        self.assertEqual(result["unique_opportunities"],expected_result["differentiation_opportunities"])
         self.mock_llm.generate_structured_json_sync.assert_called_once()
 
     def test_llm_receives_startup_and_search_context(self):
