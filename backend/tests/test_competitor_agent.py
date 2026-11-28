@@ -58,6 +58,28 @@ class TestCompetitorAgent(unittest.TestCase):
                     "source_urls": ["https://example.com/pramp"],
                 }
             ],
+
+            "feature_comparison": [
+                {
+                    "competitor_name": "InterviewBit",
+                    "key_features": ["Coding interview preparation"],
+                    "target_customers": "Students",
+                    "pricing_model": "Not available in sources",
+                    "evidence_summary": "Provides technical interview preparation.",
+                    "source_urls": ["https://example.com/interviewbit"]
+                }
+            ],
+
+            "market_gaps": [
+                {
+                    "gap": "Limited personalized interview feedback",
+                    "unmet_customer_need": "Students need personalized feedback.",
+                    "opportunity": "Provide AI-powered personalized feedback.",
+                    "supporting_evidence": "Potential opportunity requiring further validation.",
+                    "source_urls": ["https://example.com/interviewbit"]
+                }
+            ],
+
             "comparison_summary": "Both platforms support interview preparation.",
             "competitive_risks": ["Established competitors"],
             "differentiation_opportunities": ["AI-powered personalized feedback"],

@@ -4,8 +4,8 @@ Competitor Intelligence Agent
 =============================
 Purpose:
     Identifies direct and indirect competitors, compares their strengths
-    and weaknesses, and discovers differentiation opportunities using
-    Tavily search evidence and LLM analysis.
+    and weaknesses, and discovers market gaps using Tavily evidence
+    and LLM analysis.
 """
 
 import os
@@ -74,18 +74,23 @@ class CompetitorAgent:
         system_prompt = """
 You are an experienced startup competitive intelligence analyst.
 
-Your task is to identify and compare competitors using the supplied
-startup information and web search evidence.
+Your task is to identify direct and indirect competitors, compare their
+offerings, analyze market gaps, and identify differentiation opportunities
+using the supplied startup information and web search evidence.
 
 IMPORTANT RULES:
 1. Use only the supplied search evidence for competitor-specific facts.
-2. Do not invent competitor names, websites, pricing, features, or statistics.
+2. Never invent competitor names, websites, features, pricing, or statistics.
 3. Classify competitors as direct or indirect based on their relevance.
-4. If a detail is unavailable, write "Not available in sources".
+4. If information is unavailable, write "Not available in sources".
 5. Include source URLs only when they appear in the supplied evidence.
 6. Do not treat the startup being evaluated as its own competitor.
-7. Identify realistic differentiation opportunities based on the evidence.
-8. Return valid JSON only, without Markdown formatting.
+7. Compare competitors using the same relevant criteria wherever possible.
+8. Do not assume a competitor lacks a feature just because it is not
+   mentioned in the supplied search results.
+9. Distinguish verified facts from potential market opportunities.
+10. Base market gaps on evidence of unmet customer needs or limitations.
+11. Return valid JSON only, without Markdown formatting.
 
 Use this exact JSON structure:
 
@@ -93,27 +98,52 @@ Use this exact JSON structure:
     "direct_competitors": [
         {
             "name": "Competitor name",
-            "strengths": ["Strength supported by evidence"],
-            "weaknesses_or_gaps": ["Evidence-based gap or Not available in sources"],
+            "strengths": ["Evidence-based strength"],
+            "weaknesses_or_gaps": ["Evidence-based weakness or Not available in sources"],
             "source_urls": ["Source URL"]
         }
     ],
     "indirect_competitors": [
         {
             "name": "Competitor name",
-            "strengths": ["Strength supported by evidence"],
-            "weaknesses_or_gaps": ["Evidence-based gap or Not available in sources"],
+            "strengths": ["Evidence-based strength"],
+            "weaknesses_or_gaps": ["Evidence-based weakness or Not available in sources"],
             "source_urls": ["Source URL"]
         }
     ],
-    "comparison_summary": "Summary of the competitive landscape",
-    "competitive_risks": ["Competitive risk"],
-    "differentiation_opportunities": ["Opportunity for differentiation"],
+    "feature_comparison": [
+        {
+            "competitor_name": "Competitor name",
+            "key_features": ["Features supported by evidence"],
+            "target_customers": "Identified customer segment or Not available in sources",
+            "pricing_model": "Pricing information or Not available in sources",
+            "evidence_summary": "Brief evidence-based summary",
+            "source_urls": ["Source URL"]
+        }
+    ],
+    "comparison_summary": "Compare the competitors and explain their relative strengths and positioning.",
+    "market_gaps": [
+        {
+            "gap": "Identified market gap",
+            "unmet_customer_need": "Customer need that is not adequately addressed",
+            "opportunity": "How the startup could address this gap",
+            "supporting_evidence": "Evidence from the supplied search results",
+            "source_urls": ["Source URL"]
+        }
+    ],
+    "competitive_risks": ["Evidence-based competitive risk"],
+    "differentiation_opportunities": ["Realistic opportunity for differentiation"],
     "defensive_moats": ["Potential defensible advantage"]
 }
 
 If the evidence does not identify competitors, return empty competitor
 lists and explain the limitation in comparison_summary.
+
+If the evidence is insufficient to establish a market gap, return an
+empty market_gaps list rather than inventing one.
+
+Ensure all competitor-specific claims are traceable to the supplied
+search evidence.
 """
 
         user_prompt = f"""
