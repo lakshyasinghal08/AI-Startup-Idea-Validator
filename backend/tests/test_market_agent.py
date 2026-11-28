@@ -1,116 +1,138 @@
 """
-Tests for Market Analysis Agent
-===============================
+Unit tests for MarketAgent (Market Opportunity & Customer Segmentation).
 """
 
-import unittest
-from unittest.mock import Mock
+from unittest.mock import MagicMock
+import pytest
 
 from app.agents.market_agent import MarketAgent
 
 
-class TestMarketAgent(unittest.TestCase):
+SAMPLE_IDEA = {
+    "startup_name": "PrepAI",
+    "industry": "EdTech",
+    "problem_statement": "Students struggle with technical interview preparation.",
+    "proposed_solution": "AI-powered mock interview and feedback platform.",
+    "target_customers": "College students and recent graduates",
+}
 
-    def setUp(self):
-        self.mock_llm = Mock()
-        self.agent = MarketAgent(service=self.mock_llm)
+SAMPLE_SNIPPETS = [
+    {
+        "title": "Global EdTech Market Report 2026",
+        "url": "https://example.com/edtech-market-2026",
+        "content": "The global EdTech market is projected to grow at 15.8% CAGR driven by AI tutoring.",
+        "score": 0.91,
+    },
+    {
+        "title": "Career Prep Trends",
+        "url": "https://example.com/career-prep",
+        "content": "University career centers are adopting AI interview simulators to scale coaching.",
+        "score": 0.84,
+    },
+]
 
-        self.idea = {
-            "startup_name": "EcoLogix",
-            "industry": "Logistics & Supply Chain",
-            "problem": "Freight fleets waste fuel due to static route planning.",
-            "solution": "AI dynamic route optimizer reducing carbon emissions.",
-            "target_users": "Mid-market fleet managers and dispatchers",
-            "business_model": "Monthly SaaS Subscription",
-        }
-
-        self.search_snippets = [
-            {
-                "title": "Global Logistics Market Report 2026",
-                "url": "https://example.com/logistics-report",
-                "content": "The global fleet management software market is projected to reach $15.5B by 2030, growing at a 13.2% CAGR.",
-                "score": 0.94,
-            },
-            {
-                "title": "Freight Optimization Technology Trends",
-                "url": "https://example.com/freight-trends",
-                "content": "Rising diesel costs and carbon regulations are pushing logistics companies toward automated AI dispatch.",
-                "score": 0.89,
-            },
-        ]
-
-    def test_market_analysis_uses_llm(self):
-        """Verify market analysis processes idea and search snippets via LLM."""
-        llm_response = {
-            "industry": "Logistics & Supply Chain",
-            "market_size": "$15.5B Global Fleet Management Market",
-            "growth_rate": "13.2% CAGR",
-            "customer_segments": ["Mid-market trucking fleets", "Independent freight dispatchers"],
-            "target_audience": "Mid-market fleet managers",
-            "trends": ["Decarbonization regulations", "Automated dispatch adoption"],
-            "demand_indicators": ["Rising diesel costs forcing route efficiency"],
-            "opportunities": ["Electric fleet routing integration"],
-            "challenges": ["Incumbent telematics vendor lock-in"],
-            "tam": "$15.5B Global Market",
-            "sam": "$3.2B Mid-market Segment",
-            "som": "$220M Realistic 3-Year Beachhead",
-            "cagr": "13.2%",
-            "market_demand_score": 85.0,
-        }
-        self.mock_llm.generate_structured_json_sync.return_value = llm_response
-
-        result = self.agent.execute(self.idea, self.search_snippets)
-
-        self.assertEqual(result["industry"], "Logistics & Supply Chain")
-        self.assertEqual(result["market_size"], "$15.5B Global Fleet Management Market")
-        self.assertEqual(result["growth_rate"], "13.2% CAGR")
-        self.assertEqual(len(result["customer_segments"]), 2)
-        self.assertEqual(len(result["trends"]), 2)
-        self.assertEqual(len(result["opportunities"]), 1)
-        self.assertEqual(len(result["challenges"]), 1)
-        self.assertIn("tam", result)
-        self.assertIn("sam", result)
-        self.assertIn("som", result)
-        self.assertEqual(result["market_demand_score"], 85.0)
-        self.mock_llm.generate_structured_json_sync.assert_called_once()
-
-    def test_llm_receives_idea_and_search_context(self):
-        """Verify prompt contains idea attributes and Tavily search text."""
-        self.mock_llm.generate_structured_json_sync.return_value = {
-            "industry": "Logistics",
-            "market_size": "Large",
-            "growth_rate": "10%",
-            "customer_segments": [],
-            "trends": [],
-            "opportunities": [],
-            "challenges": [],
-        }
-
-        self.agent.execute(self.idea, self.search_snippets)
-
-        call_args = str(self.mock_llm.generate_structured_json_sync.call_args)
-        self.assertIn("EcoLogix", call_args)
-        self.assertIn("Logistics & Supply Chain", call_args)
-        self.assertIn("Global Logistics Market Report", call_args)
-        self.assertIn("https://example.com/logistics-report", call_args)
-
-    def test_invalid_idea_type_raises_type_error(self):
-        """Verify passing a non-dict raises TypeError."""
-        with self.assertRaises(TypeError):
-            self.agent.execute("raw text instead of dict")  # type: ignore[arg-type]
-
-    def test_dict_wrapped_search_snippets(self):
-        """Verify search_snippets passed as a dict {'search_results': [...]} works correctly."""
-        self.mock_llm.generate_structured_json_sync.return_value = {
-            "industry": "Logistics",
-            "market_size": "$10B",
-            "growth_rate": "12%",
-        }
-
-        wrapped_search = {"search_results": self.search_snippets}
-        result = self.agent.execute(self.idea, wrapped_search)
-        self.assertIn("industry", result)
+MOCK_LLM_RESPONSE = {
+    "industry": "EdTech",
+    "market_size": "$8.5B Global EdTech Market",
+    "growth_rate": "15.8% CAGR",
+    "customer_segments": ["Final-Year CS Students", "University Career Centers"],
+    "trends": ["AI tutoring and interview simulator adoption"],
+    "opportunities": ["Scaling mock interview coaching for graduates"],
+    "challenges": ["Competition from free interview prep platforms"],
+    "demand_indicators": ["Rising campus placement prep spending"],
+    "tam": "$8.5B",
+    "sam": "$1.9B",
+    "som": "$140M",
+    "cagr": "15.8% CAGR",
+    "market_demand_score": 85.0,
+}
 
 
-if __name__ == "__main__":
-    unittest.main()
+def test_market_agent_returns_standardized_analysis():
+    mock_llm = MagicMock()
+    mock_llm.generate_structured_json_sync.return_value = MOCK_LLM_RESPONSE
+
+    agent = MarketAgent(service=mock_llm)
+    result = agent.execute(SAMPLE_IDEA, SAMPLE_SNIPPETS)
+
+    assert result["industry"] == "EdTech"
+    assert result["cagr"] == "15.8% CAGR"
+    assert len(result["trends"]) == 1
+    assert len(result["customer_segments"]) == 2
+    assert "https://example.com/edtech-market-2026" in result["source_urls"]
+    assert result["market_demand_score"] == 85.0
+
+    mock_llm.generate_structured_json_sync.assert_called_once()
+    call_kwargs = mock_llm.generate_structured_json_sync.call_args.kwargs
+    assert "PrepAI" in call_kwargs["user_prompt"]
+    assert "https://example.com/edtech-market-2026" in call_kwargs["user_prompt"]
+
+
+def test_market_agent_accepts_dict_wrapped_search_results():
+    mock_llm = MagicMock()
+    mock_llm.generate_structured_json_sync.return_value = MOCK_LLM_RESPONSE
+
+    agent = MarketAgent(service=mock_llm)
+    result = agent.execute(SAMPLE_IDEA, {"search_results": SAMPLE_SNIPPETS})
+
+    assert isinstance(result, dict)
+    assert "https://example.com/edtech-market-2026" in result["source_urls"]
+
+
+def test_market_agent_filters_malformed_snippets():
+    mock_llm = MagicMock()
+    mock_llm.generate_structured_json_sync.return_value = MOCK_LLM_RESPONSE
+
+    bad_snippets = [
+        "not-a-dict",
+        {"title": "Missing URL", "content": "Some text"},
+        {"title": "Valid", "url": "https://example.com/valid", "content": "Valid content"},
+    ]
+
+    agent = MarketAgent(service=mock_llm)
+    agent.execute(SAMPLE_IDEA, bad_snippets)
+
+    user_prompt = mock_llm.generate_structured_json_sync.call_args.kwargs["user_prompt"]
+    assert "https://example.com/valid" in user_prompt
+    assert "Missing URL" not in user_prompt
+
+
+def test_market_agent_raises_on_invalid_idea_input():
+    mock_llm = MagicMock()
+    agent = MarketAgent(service=mock_llm)
+
+    with pytest.raises(TypeError, match="dictionary"):
+        agent.execute("not-a-dict", SAMPLE_SNIPPETS)
+
+    with pytest.raises(ValueError, match="non-empty dictionary"):
+        agent.execute({}, SAMPLE_SNIPPETS)
+
+
+def test_market_agent_raises_on_invalid_llm_response():
+    mock_llm = MagicMock()
+    mock_llm.generate_structured_json_sync.return_value = None
+
+    agent = MarketAgent(service=mock_llm)
+
+    with pytest.raises(TypeError, match="invalid response"):
+        agent.execute(SAMPLE_IDEA, SAMPLE_SNIPPETS)
+
+
+def test_market_agent_raises_on_missing_required_fields():
+    mock_llm = MagicMock()
+    mock_llm.generate_structured_json_sync.return_value = {"industry": "EdTech"}
+
+    agent = MarketAgent(service=mock_llm)
+
+    with pytest.raises(ValueError, match="missing required"):
+        agent.execute(SAMPLE_IDEA, SAMPLE_SNIPPETS)
+
+
+def test_market_agent_propagates_llm_service_error():
+    mock_llm = MagicMock()
+    mock_llm.generate_structured_json_sync.side_effect = RuntimeError("API key missing")
+
+    agent = MarketAgent(service=mock_llm)
+
+    with pytest.raises(RuntimeError, match="API key missing"):
+        agent.execute(SAMPLE_IDEA, SAMPLE_SNIPPETS)
